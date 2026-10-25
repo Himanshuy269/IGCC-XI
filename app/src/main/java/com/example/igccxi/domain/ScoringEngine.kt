@@ -1,0 +1,480 @@
+package com.example.igccxi.domain
+
+import com.example.igccxi.data.model.BallEvent
+import com.example.igccxi.data.model.BallType
+import com.example.igccxi.data.model.BatterScore
+import com.example.igccxi.data.model.BowlerScore
+import com.example.igccxi.data.model.Innings
+import com.example.igccxi.data.model.Match
+import com.example.igccxi.data.model.MatchStatus
+import java.util.UUID
+
+object ScoringEngine {
+
+    /**
+     * Initializes match with the first innings, opening batsmen, and opening bowler.
+     */
+    fun startMatch(
+        match: Match,
+        strikerName: String = "Striker 1",
+        nonStrikerName: String = "Non-Striker 2",
+        bowlerName: String = "Bowler 1"
+    ): Match {
+        val battingTeam = if (match.tossDecision.equals("bat", ignoreCase = true)) match.tossWinner else {
+            if (match.tossWinner == match.teamA) match.teamB else match.teamA
+        }
+        val bowlingTeam = if (battingTeam == match.teamA) match.teamB else match.teamA
+
+        val striker = BatterScore(id = "b1", name = strikerName)
+        val nonStriker = BatterScore(id = "b2", name = nonStrikerName)
+        val bowler = BowlerScore(id = "bw1", name = bowlerName)
+
+        val innings1 = Innings(
+            inningsNumber = 1,
+            battingTeam = battingTeam,
+            bowlingTeam = bowlingTeam,
+            currentStrikerId = striker.id,
+            currentNonStrikerId = nonStriker.id,
+            currentBowlerId = bowler.id,
+            batters = listOf(striker, nonStriker),
+            bowlers = listOf(bowler)
+        )
+
+        return match.copy(
+            status = MatchStatus.INNINGS_1,
+            currentInningsNumber = 1,
+            innings1 = innings1
+        )
+    }
+
+    /**
+     * Records runs scored off a legal delivery (0, 1, 2, 3, 4, 6).
+     */
+    fun recordRuns(match: Match, runs: Int): Match {
+        if (!match.isScorable) return match
+        val current = match.currentInnings
+        val striker = current.getStriker() ?: return match
+        val bowler = current.getCurrentBowler() ?: return match
+
+        // 1. Update striker stats
+        val updatedStriker = striker.copy(
+            runs = striker.runs + runs,
+            ballsFaced = striker.ballsFaced + 1,
+            fours = if (runs == 4) striker.fours + 1 else striker.fours,
+            sixes = if (runs == 6) striker.sixes + 1 else striker.sixes
+        )
+
+        // 2. Update bowler stats
+        val nextBallsInOver = current.ballsBowledInOver + 1
+        val isOverComplete = nextBallsInOver >= 6
+
+        val updatedBowler = bowler.copy(
+            runsConceded = bowler.runsConceded + runs,
+            oversBowled = if (isOverComplete) bowler.oversBowled + 1 else bowler.oversBowled,
+            ballsBowledInOver = if (isOverComplete) 0 else nextBallsInOver
+        )
+
+        // 3. Batters & Bowlers list updates
+        val updatedBatters = current.batters.map { if (it.id == updatedStriker.id) updatedStriker else it }
+        val updatedBowlers = current.bowlers.map { if (it.id == updatedBowler.id) updatedBowler else it }
+
+        // 4. Strike rotation: odd runs swap strike
+        var newStrikerId = current.currentStrikerId
+        var newNonStrikerId = current.currentNonStrikerId
+        if (runs % 2 != 0) {
+            val temp = newStrikerId
+            newStrikerId = newNonStrikerId
+            newNonStrikerId = temp
+        }
+
+        // End of over: swap strike again
+        if (isOverComplete) {
+            val temp = newStrikerId
+            newStrikerId = newNonStrikerId
+            newNonStrikerId = temp
+        }
+
+        val ballEvent = BallEvent(
+            id = UUID.randomUUID().toString(),
+            type = BallType.NORMAL,
+            runsOffBat = runs,
+            extraRuns = 0,
+            isLegalBall = true,
+            isWicket = false,
+            batterId = striker.id,
+            bowlerId = bowler.id,
+            displayText = runs.toString()
+        )
+
+        val updatedInnings = current.copy(
+            totalRuns = current.totalRuns + runs,
+            oversBowled = if (isOverComplete) current.oversBowled + 1 else current.oversBowled,
+            ballsBowledInOver = if (isOverComplete) 0 else nextBallsInOver,
+            currentStrikerId = newStrikerId,
+            currentNonStrikerId = newNonStrikerId,
+            batters = updatedBatters,
+            bowlers = updatedBowlers,
+            recentBalls = current.recentBalls + ballEvent
+        )
+
+        return finalizeBall(match, updatedInnings)
+    }
+
+    /**
+     * Records a Wide delivery (+1 extra run, bowler conceded +1, legal ball count not incremented).
+     */
+    fun recordWide(match: Match, extraRuns: Int = 1): Match {
+        if (!match.isScorable) return match
+        val current = match.currentInnings
+        val bowler = current.getCurrentBowler() ?: return match
+
+        val updatedBowler = bowler.copy(
+            runsConceded = bowler.runsConceded + extraRuns
+        )
+
+        val updatedBowlers = current.bowlers.map { if (it.id == updatedBowler.id) updatedBowler else it }
+        val updatedExtras = current.extras.copy(wides = current.extras.wides + extraRuns)
+
+        val ballEvent = BallEvent(
+            id = UUID.randomUUID().toString(),
+            type = BallType.WIDE,
+            runsOffBat = 0,
+            extraRuns = extraRuns,
+            isLegalBall = false,
+            isWicket = false,
+            batterId = current.currentStrikerId,
+            bowlerId = bowler.id,
+            displayText = if (extraRuns > 1) "${extraRuns}Wd" else "Wd"
+        )
+
+        val updatedInnings = current.copy(
+            totalRuns = current.totalRuns + extraRuns,
+            extras = updatedExtras,
+            bowlers = updatedBowlers,
+            recentBalls = current.recentBalls + ballEvent
+        )
+
+        return finalizeBall(match, updatedInnings)
+    }
+
+    /**
+     * Records a No Ball delivery (+1 extra run + any runs scored off bat, legal ball count not incremented).
+     */
+    fun recordNoBall(match: Match, runsOffBat: Int = 0): Match {
+        if (!match.isScorable) return match
+        val current = match.currentInnings
+        val striker = current.getStriker() ?: return match
+        val bowler = current.getCurrentBowler() ?: return match
+
+        val totalRunAdded = 1 + runsOffBat
+
+        val updatedStriker = striker.copy(
+            runs = striker.runs + runsOffBat,
+            ballsFaced = striker.ballsFaced + 1,
+            fours = if (runsOffBat == 4) striker.fours + 1 else striker.fours,
+            sixes = if (runsOffBat == 6) striker.sixes + 1 else striker.sixes
+        )
+
+        val updatedBowler = bowler.copy(
+            runsConceded = bowler.runsConceded + totalRunAdded
+        )
+
+        val updatedBatters = current.batters.map { if (it.id == updatedStriker.id) updatedStriker else it }
+        val updatedBowlers = current.bowlers.map { if (it.id == updatedBowler.id) updatedBowler else it }
+        val updatedExtras = current.extras.copy(noBalls = current.extras.noBalls + 1)
+
+        // Strike rotation on odd runs off bat
+        var newStrikerId = current.currentStrikerId
+        var newNonStrikerId = current.currentNonStrikerId
+        if (runsOffBat % 2 != 0) {
+            val temp = newStrikerId
+            newStrikerId = newNonStrikerId
+            newNonStrikerId = temp
+        }
+
+        val ballEvent = BallEvent(
+            id = UUID.randomUUID().toString(),
+            type = BallType.NO_BALL,
+            runsOffBat = runsOffBat,
+            extraRuns = 1,
+            isLegalBall = false,
+            isWicket = false,
+            batterId = striker.id,
+            bowlerId = bowler.id,
+            displayText = if (runsOffBat > 0) "Nb+$runsOffBat" else "Nb"
+        )
+
+        val updatedInnings = current.copy(
+            totalRuns = current.totalRuns + totalRunAdded,
+            extras = updatedExtras,
+            batters = updatedBatters,
+            bowlers = updatedBowlers,
+            currentStrikerId = newStrikerId,
+            currentNonStrikerId = newNonStrikerId,
+            recentBalls = current.recentBalls + ballEvent
+        )
+
+        return finalizeBall(match, updatedInnings)
+    }
+
+    /**
+     * Records a Wicket delivery. Legal ball, increments wickets, marks batter out.
+     */
+    fun recordWicket(
+        match: Match,
+        dismissalDescription: String = "bowled",
+        newBatterName: String? = null
+    ): Match {
+        if (!match.isScorable) return match
+        val current = match.currentInnings
+        val striker = current.getStriker() ?: return match
+        val bowler = current.getCurrentBowler() ?: return match
+
+        val updatedStriker = striker.copy(
+            ballsFaced = striker.ballsFaced + 1,
+            isOut = true,
+            dismissal = dismissalDescription
+        )
+
+        val nextBallsInOver = current.ballsBowledInOver + 1
+        val isOverComplete = nextBallsInOver >= 6
+
+        val updatedBowler = bowler.copy(
+            wickets = bowler.wickets + 1,
+            oversBowled = if (isOverComplete) bowler.oversBowled + 1 else bowler.oversBowled,
+            ballsBowledInOver = if (isOverComplete) 0 else nextBallsInOver
+        )
+
+        val nextWickets = current.wickets + 1
+        val isAllOut = nextWickets >= 10
+
+        var battersList = current.batters.map { if (it.id == updatedStriker.id) updatedStriker else it }
+        var nextStrikerId = ""
+
+        if (!isAllOut) {
+            val batterName = newBatterName ?: "Batter ${battersList.size + 1}"
+            val newBatter = BatterScore(
+                id = "b${battersList.size + 1}_${System.currentTimeMillis() % 1000}",
+                name = batterName
+            )
+            battersList = battersList + newBatter
+            nextStrikerId = newBatter.id
+        }
+
+        var newNonStrikerId = current.currentNonStrikerId
+        if (isOverComplete && !isAllOut) {
+            // Swap strike on end of over
+            val temp = nextStrikerId
+            nextStrikerId = newNonStrikerId
+            newNonStrikerId = temp
+        }
+
+        val ballEvent = BallEvent(
+            id = UUID.randomUUID().toString(),
+            type = BallType.WICKET,
+            runsOffBat = 0,
+            extraRuns = 0,
+            isLegalBall = true,
+            isWicket = true,
+            batterId = striker.id,
+            bowlerId = bowler.id,
+            displayText = "W"
+        )
+
+        val updatedInnings = current.copy(
+            wickets = nextWickets,
+            oversBowled = if (isOverComplete) current.oversBowled + 1 else current.oversBowled,
+            ballsBowledInOver = if (isOverComplete) 0 else nextBallsInOver,
+            batters = battersList,
+            bowlers = current.bowlers.map { if (it.id == updatedBowler.id) updatedBowler else it },
+            currentStrikerId = nextStrikerId,
+            currentNonStrikerId = newNonStrikerId,
+            recentBalls = current.recentBalls + ballEvent
+        )
+
+        return finalizeBall(match, updatedInnings)
+    }
+
+    /**
+     * Changes or introduces a bowler.
+     */
+    fun selectBowler(match: Match, bowlerName: String): Match {
+        val current = match.currentInnings
+        val trimmed = bowlerName.trim()
+        if (trimmed.isEmpty()) return match
+
+        val existingBowler = current.bowlers.find { it.name.equals(trimmed, ignoreCase = true) }
+        val updatedBowlers: List<BowlerScore>
+        val bowlerId: String
+
+        if (existingBowler != null) {
+            bowlerId = existingBowler.id
+            updatedBowlers = current.bowlers
+        } else {
+            val newBowler = BowlerScore(
+                id = "bw${current.bowlers.size + 1}_${System.currentTimeMillis() % 1000}",
+                name = trimmed
+            )
+            bowlerId = newBowler.id
+            updatedBowlers = current.bowlers + newBowler
+        }
+
+        val updatedInnings = current.copy(
+            currentBowlerId = bowlerId,
+            bowlers = updatedBowlers
+        )
+
+        return if (match.currentInningsNumber == 2) {
+            match.copy(innings2 = updatedInnings)
+        } else {
+            match.copy(innings1 = updatedInnings)
+        }
+    }
+
+    /**
+     * Swaps strike between striker and non-striker.
+     */
+    fun swapStrike(match: Match): Match {
+        val current = match.currentInnings
+        val updatedInnings = current.copy(
+            currentStrikerId = current.currentNonStrikerId,
+            currentNonStrikerId = current.currentStrikerId
+        )
+        return if (match.currentInningsNumber == 2) {
+            match.copy(innings2 = updatedInnings)
+        } else {
+            match.copy(innings1 = updatedInnings)
+        }
+    }
+
+    /**
+     * Ends the current innings manually or automatically.
+     */
+    fun endInnings(match: Match): Match {
+        if (match.currentInningsNumber == 1) {
+            val completedInnings1 = match.innings1.copy(isCompleted = true)
+            val target = completedInnings1.totalRuns + 1
+            return match.copy(
+                status = MatchStatus.INNINGS_BREAK,
+                innings1 = completedInnings1,
+                target = target
+            )
+        } else {
+            val completedInnings2 = match.innings2?.copy(isCompleted = true) ?: match.innings1
+            val result = calculateFinalResult(match.copy(innings2 = completedInnings2))
+            return match.copy(
+                status = MatchStatus.COMPLETED,
+                innings2 = completedInnings2,
+                result = result
+            )
+        }
+    }
+
+    /**
+     * Starts the 2nd innings with opening batters and opening bowler.
+     */
+    fun startSecondInnings(
+        match: Match,
+        strikerName: String = "Chasing Striker",
+        nonStrikerName: String = "Chasing Non-Striker",
+        bowlerName: String = "Opening Bowler"
+    ): Match {
+        val battingTeam = match.innings1.bowlingTeam
+        val bowlingTeam = match.innings1.battingTeam
+
+        val striker = BatterScore(id = "b2_1", name = strikerName)
+        val nonStriker = BatterScore(id = "b2_2", name = nonStrikerName)
+        val bowler = BowlerScore(id = "bw2_1", name = bowlerName)
+
+        val innings2 = Innings(
+            inningsNumber = 2,
+            battingTeam = battingTeam,
+            bowlingTeam = bowlingTeam,
+            currentStrikerId = striker.id,
+            currentNonStrikerId = nonStriker.id,
+            currentBowlerId = bowler.id,
+            batters = listOf(striker, nonStriker),
+            bowlers = listOf(bowler)
+        )
+
+        return match.copy(
+            status = MatchStatus.INNINGS_2,
+            currentInningsNumber = 2,
+            innings2 = innings2
+        )
+    }
+
+    /**
+     * Finalizes the state of a match after any ball event:
+     * - Checks for target achieved in 2nd innings
+     * - Checks for overs completed
+     * - Checks for all out
+     */
+    private fun finalizeBall(match: Match, updatedInnings: Innings): Match {
+        val target = match.target
+        val isSecondInnings = match.currentInningsNumber == 2
+
+        if (isSecondInnings && target != null) {
+            // Check if chasing team chased down target
+            if (updatedInnings.totalRuns >= target) {
+                val wicketsRemaining = 10 - updatedInnings.wickets
+                val result = "${updatedInnings.battingTeam} won by $wicketsRemaining wickets"
+                return match.copy(
+                    innings2 = updatedInnings.copy(isCompleted = true),
+                    status = MatchStatus.COMPLETED,
+                    result = result
+                )
+            }
+        }
+
+        // Check if overs completed or all out
+        val isOversFinished = updatedInnings.oversBowled >= match.totalOvers
+        val isAllOut = updatedInnings.wickets >= 10
+
+        if (isOversFinished || isAllOut) {
+            if (!isSecondInnings) {
+                // End of Innings 1
+                val targetRun = updatedInnings.totalRuns + 1
+                return match.copy(
+                    innings1 = updatedInnings.copy(isCompleted = true),
+                    status = MatchStatus.INNINGS_BREAK,
+                    target = targetRun
+                )
+            } else {
+                // End of Innings 2 -> Match Finished!
+                val completedMatch = match.copy(innings2 = updatedInnings.copy(isCompleted = true))
+                val result = calculateFinalResult(completedMatch)
+                return completedMatch.copy(
+                    status = MatchStatus.COMPLETED,
+                    result = result
+                )
+            }
+        }
+
+        return if (isSecondInnings) {
+            match.copy(innings2 = updatedInnings)
+        } else {
+            match.copy(innings1 = updatedInnings)
+        }
+    }
+
+    /**
+     * Determines match result when 2nd innings ends (all out or overs done).
+     */
+    fun calculateFinalResult(match: Match): String {
+        val inn1 = match.innings1
+        val inn2 = match.innings2 ?: return "Match in progress"
+
+        return when {
+            inn2.totalRuns > inn1.totalRuns -> {
+                val wicketsLeft = 10 - inn2.wickets
+                "${inn2.battingTeam} won by $wicketsLeft wickets"
+            }
+            inn1.totalRuns > inn2.totalRuns -> {
+                val runsDiff = inn1.totalRuns - inn2.totalRuns
+                "${inn1.battingTeam} won by $runsDiff runs"
+            }
+            else -> "Match tied"
+        }
+    }
+}
