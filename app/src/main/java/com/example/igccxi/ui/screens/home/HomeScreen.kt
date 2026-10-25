@@ -97,9 +97,9 @@ fun HomeScreen(
                             contentDescription = "IGCC XI Logo",
                             contentScale = ContentScale.Fit,
                             modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .border(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                                .size(width = 44.dp, height = 33.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .border(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
@@ -514,9 +514,9 @@ private fun CleanHeroBanner(
                         contentDescription = "IGCC XI Logo",
                         contentScale = ContentScale.Fit,
                         modifier = Modifier
-                            .size(56.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .border(2.dp, Color.White.copy(alpha = 0.85f), RoundedCornerShape(12.dp))
+                            .size(width = 64.dp, height = 48.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .border(2.dp, Color.White.copy(alpha = 0.85f), RoundedCornerShape(10.dp))
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
