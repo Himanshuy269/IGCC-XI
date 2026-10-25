@@ -324,15 +324,16 @@ private fun FeaturedLiveCard(
                 modifier = Modifier.matchParentSize()
             )
 
-            // Scrim overlay for contrast & readability
+            // High-intensity photo scrim overlay (lightened to preserve image brightness & vibrance)
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                Color(0x990A1A0F),
-                                Color(0xD906120A)
+                                Color(0x20000000), // ~12% subtle top shadow to keep sky & sunbeams vivid
+                                Color(0x45000000), // ~27% mid shadow
+                                Color(0x75000000)  // ~45% bottom shadow for button contrast
                             )
                         )
                     )
@@ -467,15 +468,16 @@ private fun CleanHeroBanner(
                 modifier = Modifier.matchParentSize()
             )
 
-            // Scrim overlay for contrast & readability
+            // High-intensity photo scrim overlay (lightened to preserve image brightness & vibrance)
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                Color(0x990A1A0F),
-                                Color(0xD906120A)
+                                Color(0x20000000), // ~12% subtle top shadow to keep sky & sunbeams vivid
+                                Color(0x45000000), // ~27% mid shadow
+                                Color(0x75000000)  // ~45% bottom shadow for button contrast
                             )
                         )
                     )
