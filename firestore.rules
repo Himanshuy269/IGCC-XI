@@ -1,0 +1,147 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: matches
+// Document ID: {matchId} (Firestore auto-generated ID or match UUID)
+//
+// Fields:
+//   - id: string (required, 1-128 chars, matches document ID)
+//   - teamA: string (required, 1-100 chars) - Name of Team A
+//   - teamB: string (required, 1-100 chars) - Name of Team B
+//   - date: string (required, 4-30 chars, format: YYYY-MM-DD)
+//   - totalOvers: number (required, integer between 1 and 150)
+//   - status: string (required, enum: NOT_STARTED, INNINGS_1, INNINGS_BREAK, INNINGS_2, COMPLETED)
+//   - scorerId: string (required, 0-128 chars, Firebase Auth UID of scorer)
+//   - currentInningsNumber: number (required, 1 or 2)
+//   - innings1: map (required, score, batters list, bowlers list, extras, recentBalls)
+//   - innings2: map (optional/nullable, score, batters, bowlers, extras, recentBalls)
+//   - target: number (optional/nullable, target score for 2nd innings)
+//   - result: string (required, 0-200 chars, e.g. "IGCC won by 4 wickets")
+//   - tossWinner: string (required, 0-100 chars)
+//   - tossDecision: string (required, 0-20 chars, e.g. "bat" or "bowl")
+//   - createdAt: number (required, timestamp in ms, positive integer, immutable)
+//
+// Allowed Optional Serialization Helper Getters:
+//   - currentInnings: map (optional getter serialization)
+//   - isScorable / scorable: bool (optional getter serialization)
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Check if the request is from an authenticated user (including anonymous auth)
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user is the assigned scorer or match has no assigned scorer
+    function isAuthorizedScorer() {
+      return isAuthenticated() && (
+        resource.data.scorerId == request.auth.uid ||
+        !('scorerId' in resource.data) ||
+        resource.data.scorerId == ''
+      );
+    }
+
+    // Check required top-level match fields exist
+    function hasRequiredMatchFields(data) {
+      return data.keys().hasAll([
+        'id', 'teamA', 'teamB', 'date', 'totalOvers', 'status',
+        'scorerId', 'currentInningsNumber', 'innings1',
+        'result', 'tossWinner', 'tossDecision', 'createdAt'
+      ]);
+    }
+
+    // Check only allowed fields are present on the match document
+    function hasOnlyAllowedMatchFields(data) {
+      return data.keys().hasOnly([
+        'id', 'teamA', 'teamB', 'date', 'totalOvers', 'status',
+        'scorerId', 'currentInningsNumber', 'innings1', 'innings2',
+        'target', 'result', 'tossWinner', 'tossDecision', 'createdAt',
+        'currentInnings', 'isScorable', 'scorable'
+      ]);
+    }
+
+    // Validate innings structure and bounds to prevent resource exhaustion
+    function isValidInnings(inningsData) {
+      return inningsData is map &&
+        inningsData.battingTeam is string && inningsData.battingTeam.size() <= 100 &&
+        inningsData.bowlingTeam is string && inningsData.bowlingTeam.size() <= 100 &&
+        inningsData.totalRuns is number && inningsData.totalRuns >= 0 &&
+        inningsData.wickets is number && inningsData.wickets >= 0 && inningsData.wickets <= 11 &&
+        inningsData.oversBowled is number && inningsData.oversBowled >= 0 &&
+        inningsData.ballsBowledInOver is number && inningsData.ballsBowledInOver >= 0 && inningsData.ballsBowledInOver <= 5 &&
+        inningsData.batters is list && inningsData.batters.size() <= 30 &&
+        inningsData.bowlers is list && inningsData.bowlers.size() <= 30 &&
+        inningsData.recentBalls is list && inningsData.recentBalls.size() <= 600 &&
+        inningsData.extras is map;
+    }
+
+    // ===============================================================
+    // Domain Validator (Used in both create and update)
+    // ===============================================================
+    function isValidMatch(data) {
+      return hasRequiredMatchFields(data) &&
+        hasOnlyAllowedMatchFields(data) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+        data.teamA is string && data.teamA.size() > 0 && data.teamA.size() <= 100 &&
+        data.teamB is string && data.teamB.size() > 0 && data.teamB.size() <= 100 &&
+        data.date is string && data.date.size() >= 4 && data.date.size() <= 30 &&
+        data.totalOvers is number && data.totalOvers >= 1 && data.totalOvers <= 150 &&
+        data.status is string && data.status in ['NOT_STARTED', 'INNINGS_1', 'INNINGS_BREAK', 'INNINGS_2', 'COMPLETED'] &&
+        data.scorerId is string && data.scorerId.size() <= 128 &&
+        data.currentInningsNumber is number && (data.currentInningsNumber == 1 || data.currentInningsNumber == 2) &&
+        isValidInnings(data.innings1) &&
+        (!('innings2' in data) || data.innings2 == null || isValidInnings(data.innings2)) &&
+        (!('target' in data) || data.target == null || (data.target is number && data.target >= 0)) &&
+        data.result is string && data.result.size() <= 200 &&
+        data.tossWinner is string && data.tossWinner.size() <= 100 &&
+        data.tossDecision is string && data.tossDecision.size() <= 20 &&
+        data.createdAt is number && data.createdAt > 0;
+    }
+
+    // Ensure immutable fields are not tampered with on update
+    function areImmutableMatchFieldsUnchanged() {
+      return request.resource.data.id == resource.data.id &&
+        request.resource.data.createdAt == resource.data.createdAt &&
+        (resource.data.scorerId == '' || request.resource.data.scorerId == resource.data.scorerId);
+    }
+
+    // ===============================================================
+    // Match Collection Rules
+    // ===============================================================
+    match /matches/{matchId} {
+      // 1. Public Read: Anyone can read matches and live scorecards without logging in
+      allow read: if true;
+
+      // 2. Authenticated Create: Any authenticated user (including anonymous) can create a match.
+      // Must match doc ID and set scorerId to their own UID.
+      allow create: if isAuthenticated() &&
+        isValidMatch(request.resource.data) &&
+        request.resource.data.id == matchId &&
+        request.resource.data.scorerId == request.auth.uid;
+
+      // 3. Authorized Update: Only the match scorer can update match and scorecard data.
+      // Domain validator and immutability checks are strictly enforced.
+      allow update: if isAuthorizedScorer() &&
+        isValidMatch(request.resource.data) &&
+        areImmutableMatchFieldsUnchanged();
+
+      // 4. Authorized Delete: Only the match creator can delete the match.
+      allow delete: if isAuthenticated() && resource.data.scorerId == request.auth.uid;
+    }
+
+    // Default Deny: Deny all reads and writes to all other document paths by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

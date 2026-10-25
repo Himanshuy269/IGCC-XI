@@ -21,6 +21,8 @@ data class CreateMatchUiState(
     val teamB: String = "",
     val date: String = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
     val totalOvers: Int = 20,
+    val customOversText: String = "20",
+    val isCustomSelected: Boolean = false,
     val tossWinner: String = "",
     val tossDecision: String = "bat", // "bat" or "bowl"
     val strikerName: String = "Striker 1",
@@ -31,9 +33,10 @@ data class CreateMatchUiState(
 )
 
 class CreateMatchViewModel(
-    application: Application,
-    private val repository: MatchRepository = RepositoryProvider.getRepository(application)
+    application: Application
 ) : AndroidViewModel(application) {
+
+    private val repository: MatchRepository = RepositoryProvider.getRepository(application)
 
     private val _uiState = MutableStateFlow(CreateMatchUiState())
     val uiState: StateFlow<CreateMatchUiState> = _uiState.asStateFlow()
@@ -47,7 +50,63 @@ class CreateMatchViewModel(
 
     fun onTeamBChange(name: String) = _uiState.update { it.copy(teamB = name) }
     fun onDateChange(date: String) = _uiState.update { it.copy(date = date) }
-    fun onOversChange(overs: Int) = _uiState.update { it.copy(totalOvers = overs) }
+
+    fun onPresetOversSelected(overs: Int) = _uiState.update {
+        it.copy(
+            totalOvers = overs,
+            customOversText = overs.toString(),
+            isCustomSelected = false,
+            errorMessage = null
+        )
+    }
+
+    fun onCustomOversSelected() = _uiState.update {
+        it.copy(
+            isCustomSelected = true,
+            customOversText = it.totalOvers.toString()
+        )
+    }
+
+    fun onCustomOversTextChange(text: String) {
+        val filtered = text.filter { it.isDigit() }.take(3)
+        val parsed = filtered.toIntOrNull()
+        _uiState.update {
+            it.copy(
+                customOversText = filtered,
+                totalOvers = parsed?.coerceIn(1, 100) ?: it.totalOvers,
+                isCustomSelected = true,
+                errorMessage = null
+            )
+        }
+    }
+
+    fun incrementOvers() = _uiState.update {
+        val next = (it.totalOvers + 1).coerceAtMost(100)
+        it.copy(
+            totalOvers = next,
+            customOversText = next.toString(),
+            isCustomSelected = true
+        )
+    }
+
+    fun decrementOvers() = _uiState.update {
+        val prev = (it.totalOvers - 1).coerceAtLeast(1)
+        it.copy(
+            totalOvers = prev,
+            customOversText = prev.toString(),
+            isCustomSelected = true
+        )
+    }
+
+    fun onQuickAddOvers(amount: Int) = _uiState.update {
+        val next = (it.totalOvers + amount).coerceIn(1, 100)
+        it.copy(
+            totalOvers = next,
+            customOversText = next.toString(),
+            isCustomSelected = true
+        )
+    }
+
     fun onTossWinnerChange(winner: String) = _uiState.update { it.copy(tossWinner = winner) }
     fun onTossDecisionChange(decision: String) = _uiState.update { it.copy(tossDecision = decision) }
     fun onStrikerNameChange(name: String) = _uiState.update { it.copy(strikerName = name) }
@@ -61,6 +120,17 @@ class CreateMatchViewModel(
             return
         }
 
+        val effectiveOvers = if (state.isCustomSelected) {
+            state.customOversText.toIntOrNull() ?: state.totalOvers
+        } else {
+            state.totalOvers
+        }
+
+        if (effectiveOvers < 1 || effectiveOvers > 100) {
+            _uiState.update { it.copy(errorMessage = "Please enter valid match overs between 1 and 100") }
+            return
+        }
+
         viewModelScope.launch {
             _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
             try {
@@ -68,7 +138,7 @@ class CreateMatchViewModel(
                     teamA = state.teamA.trim(),
                     teamB = state.teamB.trim(),
                     date = state.date.trim(),
-                    totalOvers = state.totalOvers,
+                    totalOvers = effectiveOvers,
                     tossWinner = if (state.tossWinner.isNotEmpty()) state.tossWinner else state.teamA.trim(),
                     tossDecision = state.tossDecision
                 )

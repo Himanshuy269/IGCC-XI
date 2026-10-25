@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "324865321846",
+    "project_id": "igcc-xi",
+    "storage_bucket": "igcc-xi.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:324865321846:android:f3a4cf4a9145d86229a857",
+        "android_client_info": {
+          "package_name": "com.example.igccxi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBbZW5CPXB9EXE54zzeR8-VEo-aKVzrpxQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

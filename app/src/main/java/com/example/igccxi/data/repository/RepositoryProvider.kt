@@ -18,14 +18,18 @@ object RepositoryProvider {
 
     private fun createRepository(context: Context): MatchRepository {
         return try {
-            val apps = FirebaseApp.getApps(context)
-            if (apps.isNotEmpty()) {
+            val app = if (FirebaseApp.getApps(context).isNotEmpty()) {
+                FirebaseApp.getInstance()
+            } else {
+                FirebaseApp.initializeApp(context)
+            }
+            if (app != null) {
                 FirestoreMatchRepository()
             } else {
-                InMemoryMatchRepository()
+                InMemoryMatchRepository(context)
             }
         } catch (e: Exception) {
-            InMemoryMatchRepository()
+            InMemoryMatchRepository(context)
         }
     }
 

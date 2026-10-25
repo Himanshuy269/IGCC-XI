@@ -3,6 +3,8 @@ package com.example.igccxi.data.repository
 import com.example.igccxi.data.model.Match
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreSettings
+import com.google.firebase.firestore.PersistentCacheSettings
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -13,6 +15,17 @@ class FirestoreMatchRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 ) : MatchRepository {
+
+    init {
+        try {
+            val settings = FirebaseFirestoreSettings.Builder()
+                .setLocalCacheSettings(PersistentCacheSettings.newBuilder().build())
+                .build()
+            firestore.firestoreSettings = settings
+        } catch (_: Exception) {
+            // Settings already set by framework
+        }
+    }
 
     private val matchesCollection = firestore.collection("matches")
 
@@ -78,8 +91,12 @@ class FirestoreMatchRepository(
         return if (currentUser != null) {
             currentUser.uid
         } else {
-            val result = auth.signInAnonymously().await()
-            result.user?.uid ?: ""
+            try {
+                val result = auth.signInAnonymously().await()
+                result.user?.uid ?: "user_${System.currentTimeMillis()}"
+            } catch (e: Exception) {
+                "offline_scorer"
+            }
         }
     }
 }

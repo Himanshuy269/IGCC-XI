@@ -24,10 +24,10 @@ data class HomeUiState(
 )
 
 class HomeViewModel(
-    application: Application,
-    private val repository: MatchRepository = RepositoryProvider.getRepository(application)
+    application: Application
 ) : AndroidViewModel(application) {
 
+    private val repository: MatchRepository = RepositoryProvider.getRepository(application)
     private val _userId = MutableStateFlow("")
     private val _error = MutableStateFlow<String?>(null)
 

@@ -26,9 +26,10 @@ data class LiveScoringUiState(
 )
 
 class LiveScoringViewModel(
-    application: Application,
-    private val repository: MatchRepository = RepositoryProvider.getRepository(application)
+    application: Application
 ) : AndroidViewModel(application) {
+
+    private val repository: MatchRepository = RepositoryProvider.getRepository(application)
 
     private val _uiState = MutableStateFlow(LiveScoringUiState())
     val uiState: StateFlow<LiveScoringUiState> = _uiState.asStateFlow()
@@ -150,6 +151,14 @@ class LiveScoringViewModel(
             bowlerName = bowler.trim().ifEmpty { "Opening Bowler" }
         )
         dismissSecondInningsDialog()
+        updateMatchInRepository(updated)
+    }
+
+    fun updateMatchOvers(newOvers: Int) {
+        val current = _uiState.value.match ?: return
+        if (newOvers < 1 || newOvers > 100) return
+        pushHistory(current)
+        val updated = current.copy(totalOvers = newOvers)
         updateMatchInRepository(updated)
     }
 
