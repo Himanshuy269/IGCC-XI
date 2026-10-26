@@ -152,19 +152,19 @@ jobs:
           cp app-update.json /tmp/app-update.json
 
           # Generate release notes markdown
-          cat <<EOF > release_body.md
-## 🏏 IGCC XI Cricket - Release ${TAG_NAME}
-
-### 🚀 What's New:
-${NOTES}
-
----
-### 📦 Download & Install:
-- **Direct APK**: [IGCC-XI.apk](https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/IGCC-XI.apk)
-- **Package Size**: ~${FILE_SIZE} bytes
-- **Release Date**: ${DATE}
-- **In-App Auto-Update**: Users of the app will automatically receive this update notification within the app!
-EOF
+          {
+            echo "## 🏏 IGCC XI Cricket - Release ${TAG_NAME}"
+            echo ""
+            echo "### 🚀 What's New:"
+            echo "${NOTES}"
+            echo ""
+            echo "---"
+            echo "### 📦 Download & Install:"
+            echo "- **Direct APK**: [IGCC-XI.apk](https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/IGCC-XI.apk)"
+            echo "- **Package Size**: ~${FILE_SIZE} bytes"
+            echo "- **Release Date**: ${DATE}"
+            echo "- **In-App Auto-Update**: Users of the app will automatically receive this update notification within the app!"
+          } > release_body.md
 
       - name: Update app-update.json in Repository
         continue-on-error: true
