@@ -64,9 +64,21 @@ class LiveScoringViewModel @JvmOverloads constructor(
 
     fun recordRuns(runs: Int) {
         val current = _uiState.value.match ?: return
+        val prevOvers = current.currentInnings.oversBowled
         pushHistory(current)
         val updated = ScoringEngine.recordRuns(current, runs)
         updateMatchInRepository(updated)
+
+        // Automatically trigger Bowler change popup after over completion
+        if (updated.isScorable && updated.currentInnings.oversBowled > prevOvers) {
+            _uiState.update {
+                it.copy(
+                    showBowlerDialog = true,
+                    isOverCompleteBowlerChange = true,
+                    completedOverNumber = updated.currentInnings.oversBowled
+                )
+            }
+        }
     }
 
     fun recordWide(extraRuns: Int = 1) {
@@ -88,6 +100,7 @@ class LiveScoringViewModel @JvmOverloads constructor(
 
     fun recordWicket(dismissal: String, newBatterName: String?) {
         val current = _uiState.value.match ?: return
+        val prevOvers = current.currentInnings.oversBowled
         pushHistory(current)
         val updated = ScoringEngine.recordWicket(
             match = current,
@@ -96,12 +109,29 @@ class LiveScoringViewModel @JvmOverloads constructor(
         )
         dismissWicketDialog()
         updateMatchInRepository(updated)
+
+        // If wicket ball completed the over, trigger Bowler change popup
+        if (updated.isScorable && updated.currentInnings.oversBowled > prevOvers) {
+            _uiState.update {
+                it.copy(
+                    showBowlerDialog = true,
+                    isOverCompleteBowlerChange = true,
+                    completedOverNumber = updated.currentInnings.oversBowled
+                )
+            }
+        }
     }
 
     fun undoLastBall() {
         if (historyStack.isEmpty()) return
         val previousState = historyStack.removeAt(historyStack.lastIndex)
-        _uiState.update { it.copy(canUndo = historyStack.isNotEmpty()) }
+        _uiState.update {
+            it.copy(
+                canUndo = historyStack.isNotEmpty(),
+                showBowlerDialog = false,
+                isOverCompleteBowlerChange = false
+            )
+        }
         updateMatchInRepository(previousState)
     }
 
@@ -111,8 +141,19 @@ class LiveScoringViewModel @JvmOverloads constructor(
         updateMatchInRepository(updated)
     }
 
-    fun showBowlerDialog() = _uiState.update { it.copy(showBowlerDialog = true) }
-    fun dismissBowlerDialog() = _uiState.update { it.copy(showBowlerDialog = false) }
+    fun showBowlerDialog() = _uiState.update {
+        it.copy(
+            showBowlerDialog = true,
+            isOverCompleteBowlerChange = false
+        )
+    }
+
+    fun dismissBowlerDialog() = _uiState.update {
+        it.copy(
+            showBowlerDialog = false,
+            isOverCompleteBowlerChange = false
+        )
+    }
 
     fun selectBowler(bowlerName: String) {
         val current = _uiState.value.match ?: return

@@ -1,10 +1,10 @@
 {
-  "latestVersionCode": 10200,
-  "latestVersionName": "1.2.0",
-  "releaseNotes": "• Cleaned Home screen layout\n• In-app update check via top-bar update icon\n• Smooth 120fps animations and zero-conflict package signing\n• Real-time cloud sync optimizations",
-  "downloadUrl": "https://github.com/Himanshuy269/IGCC-XI/releases/download/v1.2.0/IGCC-XI.apk",
+  "latestVersionCode": 10201,
+  "latestVersionName": "1.2.1",
+  "releaseNotes": "• Automatic bowler change popup after every completed over with consecutive over rule validation\n• In-app update check via top-bar update icon\n• Cleaned Home screen layout\n• Smooth 120fps animations and zero-conflict package signing\n• Real-time cloud sync optimizations",
+  "downloadUrl": "https://github.com/Himanshuy269/IGCC-XI/releases/download/v1.2.1/IGCC-XI.apk",
   "isMandatory": false,
   "minSupportedVersionCode": 1,
-  "fileSizeBytes": 18307973,
+  "fileSizeBytes": 18307972,
   "releaseDate": "2026-10-26"
 }

@@ -360,6 +360,8 @@ fun LiveScoringScreen(
                 BowlerDialog(
                     existingBowlers = innings.bowlers.map { it.name }.distinct(),
                     currentBowlerName = bowler?.name ?: "",
+                    isOverComplete = uiState.isOverCompleteBowlerChange,
+                    overNumber = uiState.completedOverNumber,
                     onDismiss = { viewModel.dismissBowlerDialog() },
                     onConfirm = { name -> viewModel.selectBowler(name) }
                 )

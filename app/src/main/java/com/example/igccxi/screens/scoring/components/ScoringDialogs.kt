@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.igccxi.ui.theme.CricketGold
 import com.example.igccxi.ui.theme.CricketGreenPrimary
 import com.example.igccxi.ui.theme.CricketWicketContainer
 import com.example.igccxi.ui.theme.CricketWicketRed
@@ -183,10 +184,15 @@ fun WicketDialog(
 fun BowlerDialog(
     existingBowlers: List<String>,
     currentBowlerName: String,
+    isOverComplete: Boolean = false,
+    overNumber: Int = 0,
     onDismiss: () -> Unit,
     onConfirm: (bowlerName: String) -> Unit
 ) {
     var bowlerName by remember { mutableStateOf("") }
+    val previousBowler = currentBowlerName.trim()
+    val isSameConsecutiveBowler = isOverComplete && bowlerName.trim().isNotEmpty() &&
+        bowlerName.trim().equals(previousBowler, ignoreCase = true)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -195,18 +201,31 @@ fun BowlerDialog(
                 Icon(
                     imageVector = Icons.Default.ChangeCircle,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
+                    tint = if (isOverComplete) CricketGold else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Select Bowler", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = if (isOverComplete) "Over $overNumber Complete! 🎯" else "Select Bowler",
+                        fontWeight = FontWeight.Black,
+                        fontSize = 18.sp
+                    )
+                    if (isOverComplete) {
+                        Text(
+                            text = "Choose bowler for Over ${overNumber + 1}",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (existingBowlers.isNotEmpty()) {
                     Text(
-                        text = "Pick previous bowler:",
+                        text = if (isOverComplete) "Pick another bowler from team:" else "Pick previous bowler:",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -216,10 +235,18 @@ fun BowlerDialog(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         existingBowlers.forEach { name ->
+                            val isJustBowled = isOverComplete && name.trim().equals(previousBowler, ignoreCase = true)
                             FilterChip(
-                                selected = bowlerName == name,
+                                selected = bowlerName.trim().equals(name.trim(), ignoreCase = true),
                                 onClick = { bowlerName = name },
-                                label = { Text(name, fontSize = 12.sp, fontWeight = FontWeight.SemiBold) }
+                                enabled = !isJustBowled,
+                                label = {
+                                    Text(
+                                        text = if (isJustBowled) "$name (Just Bowled)" else name,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
                             )
                         }
                     }
@@ -229,8 +256,18 @@ fun BowlerDialog(
                     value = bowlerName,
                     onValueChange = { bowlerName = it },
                     label = { Text("Or Type New Bowler Name") },
-                    placeholder = { Text("e.g. Bowler Name") },
+                    placeholder = { Text("e.g. Jasprit Bumrah") },
                     singleLine = true,
+                    isError = isSameConsecutiveBowler,
+                    supportingText = {
+                        if (isSameConsecutiveBowler) {
+                            Text(
+                                text = "Rule: $previousBowler just bowled over $overNumber and cannot bowl two consecutive overs.",
+                                color = CricketWicketRed,
+                                fontSize = 11.sp
+                            )
+                        }
+                    },
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -239,19 +276,22 @@ fun BowlerDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (bowlerName.trim().isNotEmpty()) {
+                    if (bowlerName.trim().isNotEmpty() && !isSameConsecutiveBowler) {
                         onConfirm(bowlerName.trim())
                     }
                 },
-                enabled = bowlerName.trim().isNotEmpty(),
+                enabled = bowlerName.trim().isNotEmpty() && !isSameConsecutiveBowler,
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Set Bowler", fontWeight = FontWeight.Bold)
+                Text(
+                    text = if (isOverComplete) "Set Bowler for Over ${overNumber + 1}" else "Set Bowler",
+                    fontWeight = FontWeight.Bold
+                )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(if (isOverComplete) "Later" else "Cancel")
             }
         }
     )
