@@ -1,10 +1,10 @@
 {
   "latestVersionCode": 10204,
   "latestVersionName": "1.2.4",
-  "releaseNotes": "• 100% accurate cricket rule compliance (MCC Laws)\n• Run out bowler exemption (wickets not charged to bowler)\n• Run out striker vs non-striker selection\n• Automatic maiden over calculations\n• Byes (B) and Leg Byes (Lb) extras support\n• Free Hit indicator on No-Ball\n• Clean 10th wicket all-out handling\n• Fixed team name display on match setup and scorecard\n• GitHub Actions CI/CD release workflow fixed and verified",
+  "releaseNotes": "Release v1.2.4 automatically published via GitHub Actions.",
   "downloadUrl": "https://github.com/Himanshuy269/IGCC-XI/releases/download/v1.2.4/IGCC-XI.apk",
   "isMandatory": false,
   "minSupportedVersionCode": 1,
-  "fileSizeBytes": 18324356,
+  "fileSizeBytes": 18324352,
   "releaseDate": "2026-10-26"
 }
