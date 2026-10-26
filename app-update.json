@@ -1,0 +1,10 @@
+{
+  "latestVersionCode": 2,
+  "latestVersionName": "1.1.0",
+  "releaseNotes": "• Dedicated Top Batsmen & Bowlers Leaderboard\n• Single-player identity deduplication\n• Built-in In-App Auto-Updater via GitHub\n• UI design improvements and 120fps animations",
+  "downloadUrl": "https://github.com/Himanshuy269/IGCC-XI/releases/latest/download/IGCC-XI.apk",
+  "isMandatory": false,
+  "minSupportedVersionCode": 1,
+  "fileSizeBytes": 18307852,
+  "releaseDate": "2026-10-26"
+}
