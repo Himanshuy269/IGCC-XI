@@ -48,11 +48,11 @@ class AppUpdateViewModel @JvmOverloads constructor(
                         showUpdateDialog = result.isUpdateAvailable,
                         feedbackMessage = if (isManual) {
                             if (result.isUpdateAvailable) {
-                                "New update v${result.updateInfo?.latestVersionName} found on GitHub! 🚀"
+                                null
                             } else if (result.updateInfo == null) {
-                                "Could not connect to GitHub update servers. Please check your internet connection."
+                                "Could not connect to update servers. Please check your internet connection."
                             } else {
-                                "You are on the latest version of IGCC XI (v${result.currentVersionName}) via GitHub! 🎉"
+                                "You are on the latest version of IGCC XI (v${result.currentVersionName})! 🎉"
                             }
                         } else null
                     )
@@ -62,7 +62,7 @@ class AppUpdateViewModel @JvmOverloads constructor(
                     it.copy(
                         isChecking = false,
                         lastCheckedTime = timeString,
-                        feedbackMessage = if (isManual) "Unable to check GitHub: ${e.message}" else null
+                        feedbackMessage = if (isManual) "Unable to check for updates: ${e.message}" else null
                     )
                 }
             }

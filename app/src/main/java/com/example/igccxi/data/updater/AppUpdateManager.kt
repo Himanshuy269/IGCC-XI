@@ -272,7 +272,7 @@ class AppUpdateManager(
         emit(UpdateDownloadState.Downloading(progressPercent = 0, bytesDownloaded = 0L, totalBytes = 0L))
 
         if (downloadUrl.isBlank()) {
-            emit(UpdateDownloadState.Error("Invalid or empty download URL from GitHub."))
+            emit(UpdateDownloadState.Error("Invalid or empty download URL."))
             return@flow
         }
 
@@ -317,12 +317,12 @@ class AppUpdateManager(
 
             val responseCode = connection?.responseCode ?: -1
             if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
-                emit(UpdateDownloadState.Error("GitHub Release APK was not found (HTTP 404). Please ensure the release workflow has finished creating the release on GitHub."))
+                emit(UpdateDownloadState.Error("Update package was not found on the server (HTTP 404)."))
                 return@flow
             }
 
             if (responseCode !in 200..299) {
-                emit(UpdateDownloadState.Error("GitHub server returned HTTP $responseCode while downloading update."))
+                emit(UpdateDownloadState.Error("Update server returned HTTP $responseCode while downloading update."))
                 return@flow
             }
 
@@ -379,7 +379,7 @@ class AppUpdateManager(
             if (tempApk.exists()) {
                 try { tempApk.delete() } catch (_: Exception) {}
             }
-            emit(UpdateDownloadState.Error(e.localizedMessage ?: "Download from GitHub failed. Please check your internet connection."))
+            emit(UpdateDownloadState.Error(e.localizedMessage ?: "Download failed. Please check your internet connection."))
         } finally {
             try { outputStream?.close() } catch (_: Exception) {}
             try { inputStream?.close() } catch (_: Exception) {}

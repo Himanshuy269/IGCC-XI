@@ -67,7 +67,6 @@ import com.example.igccxi.screens.home.components.EmptyStatePrompt
 import com.example.igccxi.screens.home.components.FeaturedLiveCard
 import com.example.igccxi.screens.home.components.HowItWorksCard
 import com.example.igccxi.screens.updater.AppUpdateDialog
-import com.example.igccxi.screens.updater.AppUpdateSection
 import com.example.igccxi.screens.updater.AppUpdateViewModel
 import com.example.igccxi.screens.updater.InstallPermissionDialog
 import com.example.igccxi.ui.components.ScoreCardSummary
@@ -131,7 +130,13 @@ fun HomeScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = { updateViewModel.checkForUpdate(isManual = true) },
+                        onClick = {
+                            if (updateState.isUpdateAvailable && updateState.updateInfo != null) {
+                                updateViewModel.openUpdateDialog()
+                            } else {
+                                updateViewModel.checkForUpdate(isManual = true)
+                            }
+                        },
                         modifier = Modifier
                             .padding(end = 4.dp)
                             .size(38.dp)
@@ -415,15 +420,6 @@ fun HomeScreen(
                             }
                         )
                     }
-                }
-
-                // 5. Dedicated In-App Update Section
-                item(key = "app_update_section") {
-                    AppUpdateSection(
-                        uiState = updateState,
-                        onCheckForUpdates = { updateViewModel.checkForUpdate(isManual = true) },
-                        onOpenUpdateDialog = { updateViewModel.openUpdateDialog() }
-                    )
                 }
 
                 item(key = "bottom_spacer") { Spacer(modifier = Modifier.height(72.dp)) }
