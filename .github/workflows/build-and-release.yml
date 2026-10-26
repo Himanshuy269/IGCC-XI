@@ -1,4 +1,4 @@
-name: Build & Release APK (In-App Auto-Update)
+name: "Build and Release APK"
 
 on:
   push:
@@ -7,17 +7,19 @@ on:
   workflow_dispatch:
     inputs:
       version_name:
-        description: 'Version Name (e.g. 1.1.0)'
+        description: 'Version Name (e.g. 1.2.4)'
         required: true
-        default: '1.1.0'
+        type: string
+        default: '1.2.4'
       release_notes:
         description: 'Release Notes for in-app display'
         required: false
-        default: '• Dedicated Top Batsmen & Bowlers Leaderboard with career stats\n• Single-player identity deduplication\n• Built-in In-App Auto-Updater via GitHub Releases\n• Smooth 120fps animations and modern cricket emerald theme'
+        type: string
+        default: 'Bug fixes and cricket scoring engine improvements'
       is_mandatory:
         description: 'Is this update mandatory?'
-        type: boolean
         required: false
+        type: boolean
         default: false
 
 permissions:
@@ -88,11 +90,15 @@ jobs:
           PATCH=${PARTS[2]:-0}
           VERSION_CODE=$(( MAJOR * 10000 + MINOR * 100 + PATCH ))
 
-          echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_OUTPUT
-          echo "VERSION_NAME=${VERSION_NAME}" >> $GITHUB_OUTPUT
-          echo "VERSION_CODE=${VERSION_CODE}" >> $GITHUB_OUTPUT
-          echo "MANDATORY=${MANDATORY}" >> $GITHUB_OUTPUT
-          echo "NOTES=${NOTES}" >> $GITHUB_OUTPUT
+          echo "TAG_NAME=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+          echo "VERSION_NAME=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
+          echo "VERSION_CODE=${VERSION_CODE}" >> "$GITHUB_OUTPUT"
+          echo "MANDATORY=${MANDATORY}" >> "$GITHUB_OUTPUT"
+          {
+            echo "NOTES<<EOF"
+            echo "$NOTES"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Run Unit Tests
         run: ./gradlew testDebugUnitTest --no-daemon
@@ -105,9 +111,8 @@ jobs:
         run: |
           mkdir -p release_artifacts
           cp app/build/outputs/apk/release/app-release.apk release_artifacts/IGCC-XI.apk
-          cp app/build/outputs/apk/release/app-release.apk "release_artifacts/IGCC XI.apk"
 
-          FILE_SIZE=$(wc -c < release_artifacts/IGCC-XI.apk)
+          FILE_SIZE=$(wc -c < release_artifacts/IGCC-XI.apk | tr -d ' ')
           DATE=$(date +'%Y-%m-%d')
           TAG_NAME="${{ steps.versioning.outputs.TAG_NAME }}"
           VERSION_NAME="${{ steps.versioning.outputs.VERSION_NAME }}"
@@ -115,63 +120,85 @@ jobs:
           NOTES="${{ steps.versioning.outputs.NOTES }}"
           MANDATORY="${{ steps.versioning.outputs.MANDATORY }}"
 
-          echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_OUTPUT
-          echo "VERSION_NAME=${VERSION_NAME}" >> $GITHUB_OUTPUT
-          echo "VERSION_CODE=${VERSION_CODE}" >> $GITHUB_OUTPUT
-          echo "FILE_SIZE=${FILE_SIZE}" >> $GITHUB_OUTPUT
-          echo "DATE=${DATE}" >> $GITHUB_OUTPUT
-          echo "MANDATORY=${MANDATORY}" >> $GITHUB_OUTPUT
-          echo "NOTES=${NOTES}" >> $GITHUB_OUTPUT
+          echo "TAG_NAME=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+          echo "VERSION_NAME=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
+          echo "VERSION_CODE=${VERSION_CODE}" >> "$GITHUB_OUTPUT"
+          echo "FILE_SIZE=${FILE_SIZE}" >> "$GITHUB_OUTPUT"
+          echo "DATE=${DATE}" >> "$GITHUB_OUTPUT"
+          echo "MANDATORY=${MANDATORY}" >> "$GITHUB_OUTPUT"
 
-          # Create updated app-update.json
-          cat <<EOF > app-update.json
-{
-  "latestVersionCode": ${VERSION_CODE},
-  "latestVersionName": "${VERSION_NAME}",
-  "releaseNotes": "${NOTES}",
-  "downloadUrl": "https://github.com/Himanshuy269/IGCC-XI/releases/download/${TAG_NAME}/IGCC-XI.apk",
-  "isMandatory": ${MANDATORY},
-  "minSupportedVersionCode": 1,
-  "fileSizeBytes": ${FILE_SIZE},
-  "releaseDate": "${DATE}"
-}
-EOF
+          # Use jq to reliably create app-update.json with valid formatting
+          jq -n \
+            --arg vCode "$VERSION_CODE" \
+            --arg vName "$VERSION_NAME" \
+            --arg notes "$NOTES" \
+            --arg dlUrl "https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/IGCC-XI.apk" \
+            --argjson mandatory "$MANDATORY" \
+            --argjson fSize "$FILE_SIZE" \
+            --arg date "$DATE" \
+            '{
+              latestVersionCode: ($vCode | tonumber),
+              latestVersionName: $vName,
+              releaseNotes: $notes,
+              downloadUrl: $dlUrl,
+              isMandatory: $mandatory,
+              minSupportedVersionCode: 1,
+              fileSizeBytes: $fSize,
+              releaseDate: $date
+            }' > app-update.json
 
           echo "Generated app-update.json:"
           cat app-update.json
+          cp app-update.json /tmp/app-update.json
 
-      - name: Commit & Push app-update.json to Main
+          # Generate release notes markdown
+          cat <<EOF > release_body.md
+## 🏏 IGCC XI Cricket - Release ${TAG_NAME}
+
+### 🚀 What's New:
+${NOTES}
+
+---
+### 📦 Download & Install:
+- **Direct APK**: [IGCC-XI.apk](https://github.com/${{ github.repository }}/releases/download/${TAG_NAME}/IGCC-XI.apk)
+- **Package Size**: ~${FILE_SIZE} bytes
+- **Release Date**: ${DATE}
+- **In-App Auto-Update**: Users of the app will automatically receive this update notification within the app!
+EOF
+
+      - name: Update app-update.json in Repository
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin main || true
-          git checkout -B main origin/main || git checkout main
-          cp app-update.json /tmp/app-update.json
-          git pull --rebase origin main || true
+          git checkout main || git checkout -b main origin/main
           cp /tmp/app-update.json app-update.json
           git add app-update.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "chore(release): update app-update.json for ${{ steps.metadata.outputs.TAG_NAME }} [skip ci]" && git push origin main)
+          if ! git diff --staged --quiet; then
+            git commit -m "chore(release): update app-update.json for ${{ steps.metadata.outputs.TAG_NAME }} [skip ci]" || true
+            git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git" main || echo "Direct push to main branch was skipped or blocked by branch protection."
+          fi
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.metadata.outputs.TAG_NAME }}
-          name: "IGCC XI v${{ steps.metadata.outputs.VERSION_NAME }}"
-          body: |
-            ## 🏏 IGCC XI Cricket - Release v${{ steps.metadata.outputs.VERSION_NAME }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.metadata.outputs.TAG_NAME }}"
+          TITLE="IGCC XI v${{ steps.metadata.outputs.VERSION_NAME }}"
 
-            ### 🚀 What's New:
-            ${{ steps.metadata.outputs.NOTES }}
-
-            ---
-            ### 📦 Download & Install:
-            - **Direct APK**: [`IGCC-XI.apk`](https://github.com/Himanshuy269/IGCC-XI/releases/download/${{ steps.metadata.outputs.TAG_NAME }}/IGCC-XI.apk)
-            - **Package Size**: ~${{ steps.metadata.outputs.FILE_SIZE }} bytes
-            - **Release Date**: ${{ steps.metadata.outputs.DATE }}
-            - **In-App Auto-Update**: Users of the app will automatically receive this update notification within the app!
-          files: |
-            release_artifacts/IGCC-XI.apk
-            release_artifacts/IGCC XI.apk
-            app-update.json
-          draft: false
-          prerelease: false
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG exists. Updating release notes and assets..."
+            gh release edit "$TAG" --title "$TITLE" --notes-file release_body.md
+            gh release upload "$TAG" release_artifacts/IGCC-XI.apk app-update.json --clobber
+          else
+            echo "Creating new release for $TAG..."
+            gh release create "$TAG" \
+              release_artifacts/IGCC-XI.apk \
+              app-update.json \
+              --title "$TITLE" \
+              --notes-file release_body.md
+          fi
+          echo "GitHub Release published successfully!"
