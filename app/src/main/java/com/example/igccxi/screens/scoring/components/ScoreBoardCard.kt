@@ -81,8 +81,13 @@ fun ScoreBoardCard(
                             }
                         }
                         Spacer(modifier = Modifier.width(8.dp))
+                        val displayBattingTeam = if (innings.battingTeam.trim().length > 1) {
+                            innings.battingTeam.trim()
+                        } else {
+                            match.currentBattingTeam.let { if (it.trim().length > 1) it.trim() else match.teamA }
+                        }
                         Text(
-                            text = innings.battingTeam.uppercase(),
+                            text = displayBattingTeam.uppercase(),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Black,
                             color = Color.White,

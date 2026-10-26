@@ -20,10 +20,17 @@ object ScoringEngine {
         nonStrikerName: String = "Non-Striker 2",
         bowlerName: String = "Bowler 1"
     ): Match {
-        val battingTeam = if (match.tossDecision.equals("bat", ignoreCase = true)) match.tossWinner else {
-            if (match.tossWinner == match.teamA) match.teamB else match.teamA
+        val cleanTeamA = match.teamA.trim().ifEmpty { "Team 1" }
+        val cleanTeamB = match.teamB.trim().ifEmpty { "Team 2" }
+        val tossWinnerIsTeamB = match.tossWinner.trim().equals(cleanTeamB, ignoreCase = true)
+        val tossWinnerName = if (tossWinnerIsTeamB) cleanTeamB else cleanTeamA
+
+        val battingTeam = if (match.tossDecision.equals("bat", ignoreCase = true)) {
+            tossWinnerName
+        } else {
+            if (tossWinnerIsTeamB) cleanTeamA else cleanTeamB
         }
-        val bowlingTeam = if (battingTeam == match.teamA) match.teamB else match.teamA
+        val bowlingTeam = if (battingTeam.equals(cleanTeamA, ignoreCase = true)) cleanTeamB else cleanTeamA
 
         val striker = BatterScore(id = "b1", name = strikerName)
         val nonStriker = BatterScore(id = "b2", name = nonStrikerName)
@@ -41,6 +48,9 @@ object ScoringEngine {
         )
 
         return match.copy(
+            teamA = cleanTeamA,
+            teamB = cleanTeamB,
+            tossWinner = tossWinnerName,
             status = MatchStatus.INNINGS_1,
             currentInningsNumber = 1,
             innings1 = innings1
@@ -388,8 +398,11 @@ object ScoringEngine {
         nonStrikerName: String = "Chasing Non-Striker",
         bowlerName: String = "Opening Bowler"
     ): Match {
-        val battingTeam = match.innings1.bowlingTeam
-        val bowlingTeam = match.innings1.battingTeam
+        val cleanTeamA = match.teamA.trim().ifEmpty { "Team 1" }
+        val cleanTeamB = match.teamB.trim().ifEmpty { "Team 2" }
+        val prevBatting = match.innings1.battingTeam.trim()
+        val battingTeam = if (prevBatting.equals(cleanTeamA, ignoreCase = true)) cleanTeamB else cleanTeamA
+        val bowlingTeam = if (battingTeam.equals(cleanTeamA, ignoreCase = true)) cleanTeamB else cleanTeamA
 
         val s = strikerName.trim().ifEmpty { "Chasing Striker 1" }
         var ns = nonStrikerName.trim().ifEmpty { "Chasing Striker 2" }

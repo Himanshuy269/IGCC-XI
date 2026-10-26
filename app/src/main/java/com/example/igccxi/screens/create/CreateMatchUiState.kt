@@ -11,7 +11,7 @@ data class CreateMatchUiState(
     val totalOvers: Int = 20,
     val customOversText: String = "20",
     val isCustomSelected: Boolean = false,
-    val tossWinner: String = "",
+    val isTeamAWonToss: Boolean = true,
     val tossDecision: String = "bat", // "bat" or "bowl"
     val strikerName: String = "Striker 1",
     val nonStrikerName: String = "Non-Striker 2",

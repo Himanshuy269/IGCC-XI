@@ -32,8 +32,9 @@ fun BowlingTable(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
+            val displayTitle = if (innings.bowlingTeam.trim().length > 1) "${innings.bowlingTeam.trim()} Bowling" else "Bowling"
             Text(
-                text = "${innings.bowlingTeam} Bowling",
+                text = displayTitle,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary

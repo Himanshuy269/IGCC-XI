@@ -34,8 +34,9 @@ fun BattingTable(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
+            val displayTitle = if (innings.battingTeam.trim().length > 1) "${innings.battingTeam.trim()} Batting" else "Batting"
             Text(
-                text = "${innings.battingTeam} Batting",
+                text = displayTitle,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary

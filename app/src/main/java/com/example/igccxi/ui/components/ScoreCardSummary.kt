@@ -119,8 +119,9 @@ fun ScoreCardSummary(
                 val inn2 = match.innings2
 
                 // Team 1 Row
+                val team1Name = if (inn1.battingTeam.trim().length > 1) inn1.battingTeam.trim() else match.teamA
                 TeamScoreRow(
-                    teamName = inn1.battingTeam.ifEmpty { match.teamA },
+                    teamName = team1Name,
                     scoreText = if (inn1.totalLegalBalls > 0 || inn1.isCompleted) {
                         "${inn1.totalRuns}/${inn1.wickets}"
                     } else "Yet to bat",
@@ -133,8 +134,9 @@ fun ScoreCardSummary(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // Team 2 Row
+                val team2Name = if (inn1.bowlingTeam.trim().length > 1) inn1.bowlingTeam.trim() else match.teamB
                 TeamScoreRow(
-                    teamName = inn1.bowlingTeam.ifEmpty { match.teamB },
+                    teamName = team2Name,
                     scoreText = if (inn2 != null && (inn2.totalLegalBalls > 0 || inn2.isCompleted)) {
                         "${inn2.totalRuns}/${inn2.wickets}"
                     } else "Yet to bat",

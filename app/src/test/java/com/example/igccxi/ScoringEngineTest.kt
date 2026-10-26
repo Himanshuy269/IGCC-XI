@@ -211,4 +211,46 @@ class ScoringEngineTest {
         assertEquals(MatchStatus.COMPLETED, finalMatch.status)
         assertEquals("India won by 4 runs", finalMatch.result)
     }
+
+    @Test
+    fun testStartMatch_teamNamesArePreservedAndNeverTruncated() {
+        // Case 1: Team B won toss and elected to bat
+        val matchTeamBBat = ScoringEngine.startMatch(
+            match = Match(
+                teamA = "Royal Challengers",
+                teamB = "Super Kings",
+                tossWinner = "Super Kings",
+                tossDecision = "bat",
+                totalOvers = 20
+            )
+        )
+        assertEquals("Super Kings", matchTeamBBat.currentInnings.battingTeam)
+        assertEquals("Royal Challengers", matchTeamBBat.currentInnings.bowlingTeam)
+
+        // Case 2: Team B won toss and elected to bowl
+        val matchTeamBBowl = ScoringEngine.startMatch(
+            match = Match(
+                teamA = "Royal Challengers",
+                teamB = "Super Kings",
+                tossWinner = "Super Kings",
+                tossDecision = "bowl",
+                totalOvers = 20
+            )
+        )
+        assertEquals("Royal Challengers", matchTeamBBowl.currentInnings.battingTeam)
+        assertEquals("Super Kings", matchTeamBBowl.currentInnings.bowlingTeam)
+
+        // Case 3: Imperfect single-char tossWinner fallback
+        val matchFallback = ScoringEngine.startMatch(
+            match = Match(
+                teamA = "Royal Challengers",
+                teamB = "Super Kings",
+                tossWinner = "R",
+                tossDecision = "bat",
+                totalOvers = 20
+            )
+        )
+        assertEquals("Royal Challengers", matchFallback.currentInnings.battingTeam)
+        assertEquals("Super Kings", matchFallback.currentInnings.bowlingTeam)
+    }
 }

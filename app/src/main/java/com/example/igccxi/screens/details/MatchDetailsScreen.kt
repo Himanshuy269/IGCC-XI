@@ -184,8 +184,11 @@ fun MatchDetailsScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                val inn1Team = if (match.innings1.battingTeam.trim().length > 1) {
+                                    match.innings1.battingTeam.trim()
+                                } else match.teamA
                                 Text(
-                                    text = match.innings1.battingTeam.ifEmpty { match.teamA },
+                                    text = inn1Team,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White
@@ -206,8 +209,11 @@ fun MatchDetailsScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
+                                    val inn2Team = if (match.innings2.battingTeam.trim().length > 1) {
+                                        match.innings2.battingTeam.trim()
+                                    } else match.teamB
                                     Text(
-                                        text = match.innings2.battingTeam.ifEmpty { match.teamB },
+                                        text = inn2Team,
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White

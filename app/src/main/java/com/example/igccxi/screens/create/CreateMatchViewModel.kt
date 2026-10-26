@@ -21,24 +21,15 @@ class CreateMatchViewModel @JvmOverloads constructor(
     private val _uiState = MutableStateFlow(CreateMatchUiState())
     val uiState: StateFlow<CreateMatchUiState> = _uiState.asStateFlow()
 
-    fun onTeamAChange(name: String) = _uiState.update {
-        it.copy(
-            teamA = name,
-            tossWinner = if (it.tossWinner.isEmpty()) name else it.tossWinner
-        )
-    }
-
+    fun onTeamAChange(name: String) = _uiState.update { it.copy(teamA = name) }
     fun onTeamBChange(name: String) = _uiState.update { it.copy(teamB = name) }
     fun onDateChange(date: String) = _uiState.update { it.copy(date = date) }
 
     fun swapTeams() = _uiState.update {
-        val newTeamA = it.teamB
-        val newTeamB = it.teamA
-        val newTossWinner = if (it.tossWinner == it.teamA) newTeamA else newTeamB
         it.copy(
-            teamA = newTeamA,
-            teamB = newTeamB,
-            tossWinner = newTossWinner
+            teamA = it.teamB,
+            teamB = it.teamA,
+            isTeamAWonToss = !it.isTeamAWonToss
         )
     }
 
@@ -106,7 +97,8 @@ class CreateMatchViewModel @JvmOverloads constructor(
         )
     }
 
-    fun onTossWinnerChange(winner: String) = _uiState.update { it.copy(tossWinner = winner) }
+    fun setTossWinnerIsTeamA(isTeamA: Boolean) = _uiState.update { it.copy(isTeamAWonToss = isTeamA) }
+    fun onTossWinnerChange(isTeamA: Boolean) = _uiState.update { it.copy(isTeamAWonToss = isTeamA) }
     fun onTossDecisionChange(decision: String) = _uiState.update { it.copy(tossDecision = decision) }
     fun onStrikerNameChange(name: String) = _uiState.update { it.copy(strikerName = name) }
     fun onNonStrikerNameChange(name: String) = _uiState.update { it.copy(nonStrikerName = name) }
@@ -149,12 +141,13 @@ class CreateMatchViewModel @JvmOverloads constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
             try {
+                val actualTossWinner = if (state.isTeamAWonToss) teamA else teamB
                 val initialMatch = Match(
                     teamA = teamA,
                     teamB = teamB,
                     date = state.date.trim(),
                     totalOvers = effectiveOvers,
-                    tossWinner = if (state.tossWinner.isNotEmpty()) state.tossWinner else teamA,
+                    tossWinner = actualTossWinner,
                     tossDecision = state.tossDecision
                 )
 

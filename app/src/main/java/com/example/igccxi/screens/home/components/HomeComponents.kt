@@ -179,8 +179,13 @@ fun FeaturedLiveCard(
                     verticalAlignment = Alignment.Bottom
                 ) {
                     Column {
+                        val displayBattingTeam = if (inn.battingTeam.trim().length > 1) {
+                            inn.battingTeam.trim()
+                        } else {
+                            match.currentBattingTeam.let { if (it.trim().length > 1) it.trim() else match.teamA }
+                        }
                         Text(
-                            text = inn.battingTeam.ifEmpty { "Batting" }.uppercase(),
+                            text = displayBattingTeam.ifEmpty { "Batting" }.uppercase(),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White.copy(alpha = 0.8f),

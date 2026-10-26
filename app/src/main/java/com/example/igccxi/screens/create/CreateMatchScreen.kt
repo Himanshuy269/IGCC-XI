@@ -325,20 +325,20 @@ fun CreateMatchScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         FilterChip(
-                            selected = uiState.tossWinner == uiState.teamA || uiState.tossWinner.isEmpty(),
-                            onClick = { viewModel.onTossWinnerChange(uiState.teamA) },
+                            selected = uiState.isTeamAWonToss,
+                            onClick = { viewModel.setTossWinnerIsTeamA(true) },
                             label = { Text(teamAName, fontWeight = FontWeight.Bold) },
-                            leadingIcon = if (uiState.tossWinner == uiState.teamA || uiState.tossWinner.isEmpty()) {
+                            leadingIcon = if (uiState.isTeamAWonToss) {
                                 { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
                             } else null,
                             modifier = Modifier.weight(1f)
                         )
 
                         FilterChip(
-                            selected = uiState.tossWinner == uiState.teamB && uiState.teamB.isNotEmpty(),
-                            onClick = { viewModel.onTossWinnerChange(uiState.teamB) },
+                            selected = !uiState.isTeamAWonToss,
+                            onClick = { viewModel.setTossWinnerIsTeamA(false) },
                             label = { Text(teamBName, fontWeight = FontWeight.Bold) },
-                            leadingIcon = if (uiState.tossWinner == uiState.teamB && uiState.teamB.isNotEmpty()) {
+                            leadingIcon = if (!uiState.isTeamAWonToss) {
                                 { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
                             } else null,
                             modifier = Modifier.weight(1f)
@@ -379,9 +379,11 @@ fun CreateMatchScreen(
                         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        val winner = if (uiState.tossWinner.isNotEmpty()) uiState.tossWinner else teamAName
-                        val battingTeam = if (uiState.tossDecision == "bat") winner else {
-                            if (winner == uiState.teamA) teamBName else teamAName
+                        val winnerName = if (uiState.isTeamAWonToss) teamAName else teamBName
+                        val battingTeam = if (uiState.tossDecision == "bat") {
+                            winnerName
+                        } else {
+                            if (uiState.isTeamAWonToss) teamBName else teamAName
                         }
                         Text(
                             text = "👉 $battingTeam will bat in the 1st Innings.",
