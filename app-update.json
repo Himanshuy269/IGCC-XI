@@ -1,10 +1,10 @@
 {
-  "latestVersionCode": 2,
-  "latestVersionName": "1.1.0",
-  "releaseNotes": "• Dedicated Top Batsmen & Bowlers Leaderboard\n• Single-player identity deduplication\n• Built-in In-App Auto-Updater via GitHub\n• UI design improvements and 120fps animations",
-  "downloadUrl": "https://github.com/Himanshuy269/IGCC-XI/releases/latest/download/IGCC-XI.apk",
+  "latestVersionCode": 10200,
+  "latestVersionName": "1.2.0",
+  "releaseNotes": "• Cleaned Home screen layout\n• In-app update check via top-bar update icon\n• Smooth 120fps animations and zero-conflict package signing\n• Real-time cloud sync optimizations",
+  "downloadUrl": "https://github.com/Himanshuy269/IGCC-XI/releases/download/v1.2.0/IGCC-XI.apk",
   "isMandatory": false,
   "minSupportedVersionCode": 1,
-  "fileSizeBytes": 18307968,
+  "fileSizeBytes": 18307973,
   "releaseDate": "2026-10-26"
 }
