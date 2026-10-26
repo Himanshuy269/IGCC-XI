@@ -88,37 +88,40 @@ class AppUpdateManager(
     }
 
     override suspend fun fetchLatestUpdateInfo(): AppUpdateInfo? = withContext(Dispatchers.IO) {
-        // Strategy 1: Check jsDelivr CDN Mirror (Global high-availability, bypasses ISP blocks on raw.githubusercontent.com)
-        try {
-            val jsDelivrInfo = fetchFromManifestUrl(GITHUB_JSDELIVR_MANIFEST_URL)
-            if (jsDelivrInfo != null) {
-                Log.d(TAG, "Successfully fetched update info from jsDelivr CDN (v${jsDelivrInfo.latestVersionName})")
-                return@withContext jsDelivrInfo
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "jsDelivr fetch failed: ${e.message}")
-        }
+        val candidates = mutableListOf<AppUpdateInfo>()
 
-        // Strategy 2: Check GitHub Raw Repository Manifest
+        // Strategy 1: Check GitHub Raw Repository Manifest with cache-busting timestamp
         try {
-            val rawGitHubInfo = fetchFromManifestUrl(GITHUB_RAW_MANIFEST_URL)
+            val cacheBusterUrl = "$GITHUB_RAW_MANIFEST_URL?t=${System.currentTimeMillis()}"
+            val rawGitHubInfo = fetchFromManifestUrl(cacheBusterUrl)
             if (rawGitHubInfo != null) {
                 Log.d(TAG, "Successfully fetched update info from GitHub Raw (v${rawGitHubInfo.latestVersionName})")
-                return@withContext rawGitHubInfo
+                candidates.add(rawGitHubInfo)
             }
         } catch (e: Exception) {
             Log.w(TAG, "GitHub Raw fetch failed: ${e.message}")
         }
 
-        // Strategy 3: Check GitHub Releases API
+        // Strategy 2: Check GitHub Releases API
         try {
             val apiGitHubInfo = fetchFromGitHubReleasesApi()
             if (apiGitHubInfo != null) {
                 Log.d(TAG, "Successfully fetched update info from GitHub Releases API (v${apiGitHubInfo.latestVersionName})")
-                return@withContext apiGitHubInfo
+                candidates.add(apiGitHubInfo)
             }
         } catch (e: Exception) {
             Log.w(TAG, "GitHub Releases API fetch failed: ${e.message}")
+        }
+
+        // Strategy 3: Check jsDelivr CDN Mirror (Global high-availability)
+        try {
+            val jsDelivrInfo = fetchFromManifestUrl(GITHUB_JSDELIVR_MANIFEST_URL)
+            if (jsDelivrInfo != null) {
+                Log.d(TAG, "Successfully fetched update info from jsDelivr CDN (v${jsDelivrInfo.latestVersionName})")
+                candidates.add(jsDelivrInfo)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "jsDelivr fetch failed: ${e.message}")
         }
 
         // Strategy 4: Check Cloud Firestore as secondary fallback
@@ -136,16 +139,17 @@ class AppUpdateManager(
                     val size = doc.getLong("fileSizeBytes") ?: 0L
                     val date = doc.getString("releaseDate") ?: ""
 
-                    Log.d(TAG, "Successfully fetched update info from Firestore fallback (v$latestName)")
-                    return@withContext AppUpdateInfo(
-                        latestVersionCode = latestCode,
-                        latestVersionName = latestName,
-                        releaseNotes = notes,
-                        downloadUrl = url,
-                        isMandatory = mandatory,
-                        minSupportedVersionCode = minCode,
-                        fileSizeBytes = size,
-                        releaseDate = date
+                    candidates.add(
+                        AppUpdateInfo(
+                            latestVersionCode = latestCode,
+                            latestVersionName = latestName,
+                            releaseNotes = notes,
+                            downloadUrl = url,
+                            isMandatory = mandatory,
+                            minSupportedVersionCode = minCode,
+                            fileSizeBytes = size,
+                            releaseDate = date
+                        )
                     )
                 }
             }
@@ -153,7 +157,8 @@ class AppUpdateManager(
             Log.w(TAG, "Firestore fallback fetch failed: ${e.message}")
         }
 
-        null
+        // Return the highest version found across all accessible update channels
+        candidates.maxByOrNull { it.latestVersionCode }
     }
 
     private fun fetchFromManifestUrl(targetUrl: String): AppUpdateInfo? {
@@ -315,7 +320,41 @@ class AppUpdateManager(
                 }
             }
 
-            val responseCode = connection?.responseCode ?: -1
+            var responseCode = connection?.responseCode ?: -1
+
+            // Fallback: If specific release asset returned 404, fallback to latest release download URL
+            if (responseCode == HttpURLConnection.HTTP_NOT_FOUND && currentUrl != GITHUB_FALLBACK_DOWNLOAD_URL) {
+                Log.w(TAG, "Download URL $currentUrl returned 404. Attempting fallback to $GITHUB_FALLBACK_DOWNLOAD_URL")
+                try {
+                    connection?.disconnect()
+                } catch (_: Exception) {}
+
+                currentUrl = GITHUB_FALLBACK_DOWNLOAD_URL
+                redirects = 0
+                while (redirects < 5) {
+                    val url = URL(currentUrl)
+                    connection = (url.openConnection() as HttpURLConnection).apply {
+                        instanceFollowRedirects = true
+                        connectTimeout = 15000
+                        readTimeout = 30000
+                        setRequestProperty("User-Agent", "Mozilla/5.0 (Android; Mobile) IGCC-XI")
+                        connect()
+                    }
+
+                    val code = connection.responseCode
+                    if (code == HttpURLConnection.HTTP_MOVED_PERM ||
+                        code == HttpURLConnection.HTTP_MOVED_TEMP ||
+                        code == 307 || code == 308
+                    ) {
+                        currentUrl = connection.getHeaderField("Location") ?: break
+                        redirects++
+                    } else {
+                        break
+                    }
+                }
+                responseCode = connection?.responseCode ?: -1
+            }
+
             if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
                 emit(UpdateDownloadState.Error("Update package was not found on the server (HTTP 404)."))
                 return@flow

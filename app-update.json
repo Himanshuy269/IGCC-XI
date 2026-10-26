@@ -1,10 +1,10 @@
 {
   "latestVersionCode": 10206,
   "latestVersionName": "1.2.6",
-  "releaseNotes": "Release v1.2.6 automatically published via GitHub Actions.",
+  "releaseNotes": "• Custom Players Per Side: Support for 5s, 6s, 7s, 8s, 11s or custom team sizes (box & gully cricket)\n• Dynamic all-out wickets: innings ends automatically at (Players - 1) wickets\n• Custom victory margins (e.g. won by X wickets in custom player matches)\n• Real-time Active Users corner badge and presence synchronization\n• 100% accurate cricket rule compliance (MCC Laws)\n• Run out attribution, maiden overs, byes & leg byes\n• Free Hit alert banner on No-Ball",
   "downloadUrl": "https://github.com/Himanshuy269/IGCC-XI/releases/download/v1.2.6/IGCC-XI.apk",
   "isMandatory": false,
   "minSupportedVersionCode": 1,
   "fileSizeBytes": 18340743,
-  "releaseDate": "2026-10-26"
+  "releaseDate": "2026-10-27"
 }

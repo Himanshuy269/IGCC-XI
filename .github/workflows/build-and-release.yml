@@ -202,3 +202,9 @@ jobs:
               --notes-file release_body.md
           fi
           echo "GitHub Release published successfully!"
+
+      - name: Purge jsDelivr CDN Cache
+        continue-on-error: true
+        run: |
+          curl -s https://purge.jsdelivr.net/gh/${{ github.repository }}@main/app-update.json || true
+          echo "Purged jsDelivr CDN cache for app-update.json"
