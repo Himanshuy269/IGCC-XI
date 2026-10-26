@@ -28,6 +28,17 @@ rules_version = '2';
 //   - currentInnings: map (optional getter serialization)
 //   - isScorable / scorable: bool (optional getter serialization)
 //
+// ---------------------------------------------------------------
+//
+// Collection: active_users
+// Document ID: {userId} (Firebase Auth UID, 1-128 chars)
+//
+// Fields:
+//   - uid: string (required, 1-128 chars, matches request.auth.uid and userId)
+//   - lastActiveAt: number (required, timestamp in ms, positive integer > 0)
+//   - appVersion: string (optional, 0-30 chars) - Client app release version
+//   - platform: string (optional, 0-30 chars) - Operating system / platform (e.g. Android)
+//
 // ===============================================================
 
 service cloud.firestore {
@@ -115,6 +126,31 @@ service cloud.firestore {
         (resource.data.scorerId == '' || request.resource.data.scorerId == resource.data.scorerId);
     }
 
+    // Check required top-level active_user fields exist
+    function hasRequiredActiveUserFields(data) {
+      return data.keys().hasAll(['uid', 'lastActiveAt']);
+    }
+
+    // Check only allowed fields are present on the active_user document
+    function hasOnlyAllowedActiveUserFields(data) {
+      return data.keys().hasOnly(['uid', 'lastActiveAt', 'appVersion', 'platform']);
+    }
+
+    // Domain Validator for active_users (Used in both create and update)
+    function isValidActiveUser(data, userId) {
+      return hasRequiredActiveUserFields(data) &&
+        hasOnlyAllowedActiveUserFields(data) &&
+        data.uid is string &&
+        data.uid.size() >= 1 &&
+        data.uid.size() <= 128 &&
+        data.uid == request.auth.uid &&
+        data.uid == userId &&
+        data.lastActiveAt is number &&
+        data.lastActiveAt > 0 &&
+        (!('appVersion' in data) || (data.appVersion is string && data.appVersion.size() <= 30)) &&
+        (!('platform' in data) || (data.platform is string && data.platform.size() <= 30));
+    }
+
     // ===============================================================
     // Match Collection Rules
     // ===============================================================
@@ -137,6 +173,29 @@ service cloud.firestore {
 
       // 4. Authorized Delete: Only the match creator can delete the match.
       allow delete: if isAuthenticated() && resource.data.scorerId == request.auth.uid;
+    }
+
+    // ===============================================================
+    // Active Users Collection Rules (Presence & Live Counts)
+    // ===============================================================
+    match /active_users/{userId} {
+      // 1. Public Read: Any app client can observe active user counts
+      allow read: if true;
+
+      // 2. Authenticated Create: Authenticated users can register their presence heartbeat
+      allow create: if isAuthenticated() &&
+        request.auth.uid == userId &&
+        isValidActiveUser(request.resource.data, userId);
+
+      // 3. Authenticated Update: Authenticated users can update their heartbeat timestamp
+      allow update: if isAuthenticated() &&
+        request.auth.uid == userId &&
+        isValidActiveUser(request.resource.data, userId) &&
+        (!('uid' in resource.data) || request.resource.data.uid == resource.data.uid);
+
+      // 4. Authenticated Delete: Users can delete their own presence record on sign-out / app exit
+      allow delete: if isAuthenticated() &&
+        request.auth.uid == userId;
     }
 
     // Default Deny: Deny all reads and writes to all other document paths by default

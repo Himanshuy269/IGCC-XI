@@ -1,6 +1,12 @@
 package com.example.igccxi.screens.home.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
@@ -27,8 +33,11 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.SportsCricket
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -39,10 +48,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -58,6 +70,7 @@ import com.example.igccxi.domain.model.MatchStatus
 import com.example.igccxi.screens.home.HomeFilter
 import com.example.igccxi.ui.theme.CricketFourBlue
 import com.example.igccxi.ui.theme.CricketGold
+import com.example.igccxi.ui.theme.CricketSuccessGreen
 import com.example.igccxi.ui.theme.CricketGreenPrimary
 import com.example.igccxi.ui.theme.CricketLiveRed
 import com.example.igccxi.ui.theme.CricketSixPurple
@@ -295,6 +308,7 @@ fun FeaturedLiveCard(
 fun CleanHeroBanner(
     totalMatchesCount: Int,
     completedCount: Int,
+    activeUsersCount: Int = 1,
     onCreateMatchClick: () -> Unit,
     onNavigateToHistory: () -> Unit,
     onNavigateToRankings: () -> Unit = {}
@@ -352,6 +366,21 @@ fun CleanHeroBanner(
                             fontWeight = FontWeight.Black,
                             color = Color.White
                         )
+                        Spacer(modifier = Modifier.height(3.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                shape = CircleShape,
+                                color = CricketSuccessGreen,
+                                modifier = Modifier.size(6.dp)
+                            ) {}
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text(
+                                text = if (activeUsersCount == 1) "1 Active Scorer Online" else "$activeUsersCount Active Scorers Online",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = CricketSuccessGreen
+                            )
+                        }
                     }
 
                     Image(
@@ -610,4 +639,169 @@ fun EmptyStatePrompt(
             }
         }
     }
+}
+
+/**
+ * Modern corner badge displaying the real-time active users count.
+ * Displays a pulsing live status dot and opens the community presence info dialog when clicked.
+ */
+@Composable
+fun ActiveUsersCornerBadge(
+    activeUsersCount: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse_transition")
+    val dotScale by infiniteTransition.animateFloat(
+        initialValue = 0.85f,
+        targetValue = 1.3f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1100, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse_scale"
+    )
+
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+        border = androidx.compose.foundation.BorderStroke(1.5.dp, CricketSuccessGreen.copy(alpha = 0.65f)),
+        shadowElevation = 6.dp,
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(14.dp)
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = CricketSuccessGreen.copy(alpha = 0.35f),
+                    modifier = Modifier
+                        .size(14.dp)
+                        .scale(dotScale)
+                ) {}
+                Surface(
+                    shape = CircleShape,
+                    color = CricketSuccessGreen,
+                    modifier = Modifier.size(7.dp)
+                ) {}
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                imageVector = Icons.Default.People,
+                contentDescription = null,
+                tint = CricketSuccessGreen,
+                modifier = Modifier.size(15.dp)
+            )
+            Spacer(modifier = Modifier.width(5.dp))
+            Text(
+                text = if (activeUsersCount == 1) "1 Active" else "$activeUsersCount Active",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                letterSpacing = (-0.2).sp
+            )
+        }
+    }
+}
+
+/**
+ * Explanatory dialog providing transparency on live presence and privacy assurances.
+ */
+@Composable
+fun ActiveUsersInfoDialog(
+    activeUsersCount: Int,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Surface(
+                shape = CircleShape,
+                color = CricketSuccessGreen.copy(alpha = 0.16f),
+                modifier = Modifier.size(52.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.People,
+                        contentDescription = null,
+                        tint = CricketSuccessGreen,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+        },
+        title = {
+            Text(
+                text = "Live Active Community",
+                fontWeight = FontWeight.Black,
+                fontSize = 18.sp,
+                textAlign = TextAlign.Center
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, CricketSuccessGreen.copy(alpha = 0.35f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = CricketSuccessGreen,
+                            modifier = Modifier.size(10.dp)
+                        ) {}
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = if (activeUsersCount == 1) "1 Scorer Active Right Now" else "$activeUsersCount Scorers Active Right Now",
+                                fontWeight = FontWeight.Black,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Real-time presence across IGCC XI app",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Security,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "100% Private & Anonymous: No personal, contact, or location data is ever taken. Presence is synchronized anonymously via Firebase Cloud Firestore.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 16.sp
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Got It", fontWeight = FontWeight.Bold)
+            }
+        }
+    )
 }

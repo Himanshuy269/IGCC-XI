@@ -15,13 +15,18 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+import com.example.igccxi.domain.usecase.ObserveActiveUsersUseCase
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+
 /**
  * ViewModel for the Home screen, cleanly consuming domain UseCases.
  */
 class HomeViewModel @JvmOverloads constructor(
     application: Application,
     private val getMatchesUseCase: GetMatchesUseCase = RepositoryProvider.provideGetMatchesUseCase(application),
-    private val getCurrentUserIdUseCase: GetCurrentUserIdUseCase = RepositoryProvider.provideGetCurrentUserIdUseCase(application)
+    private val getCurrentUserIdUseCase: GetCurrentUserIdUseCase = RepositoryProvider.provideGetCurrentUserIdUseCase(application),
+    private val observeActiveUsersUseCase: ObserveActiveUsersUseCase = RepositoryProvider.provideObserveActiveUsersUseCase(application)
 ) : AndroidViewModel(application) {
 
     private val _userId = MutableStateFlow("")
@@ -30,9 +35,27 @@ class HomeViewModel @JvmOverloads constructor(
     init {
         viewModelScope.launch {
             try {
-                _userId.value = getCurrentUserIdUseCase()
+                val uid = getCurrentUserIdUseCase()
+                _userId.value = uid
+                if (uid.isNotBlank()) {
+                    observeActiveUsersUseCase.recordHeartbeat(uid)
+                }
             } catch (e: Exception) {
                 _error.value = "Failed to initialize identity: ${e.message}"
+            }
+        }
+
+        // Periodic presence heartbeat every 60 seconds while viewing home
+        viewModelScope.launch {
+            while (isActive) {
+                delay(60_000L)
+                val uid = _userId.value
+                if (uid.isNotBlank()) {
+                    try {
+                        observeActiveUsersUseCase.recordHeartbeat(uid)
+                    } catch (_: Exception) {
+                    }
+                }
             }
         }
     }
@@ -40,8 +63,9 @@ class HomeViewModel @JvmOverloads constructor(
     val uiState: StateFlow<HomeUiState> = combine(
         getMatchesUseCase().catch { e -> _error.value = e.message },
         _userId,
+        observeActiveUsersUseCase().catch { emit(1) },
         _error
-    ) { matches, uid, err ->
+    ) { matches, uid, activeUsers, err ->
         val live = matches.filter {
             it.status == MatchStatus.INNINGS_1 ||
             it.status == MatchStatus.INNINGS_BREAK ||
@@ -53,6 +77,7 @@ class HomeViewModel @JvmOverloads constructor(
             liveMatches = live,
             recentMatches = completed,
             currentUserId = uid,
+            activeUsersCount = maxOf(activeUsers, 1),
             isLoading = false,
             errorMessage = err
         )

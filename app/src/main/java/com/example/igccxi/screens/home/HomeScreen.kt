@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,6 +63,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.igccxi.R
+import com.example.igccxi.screens.home.components.ActiveUsersCornerBadge
+import com.example.igccxi.screens.home.components.ActiveUsersInfoDialog
 import com.example.igccxi.screens.home.components.CleanHeroBanner
 import com.example.igccxi.screens.home.components.EmptyStatePrompt
 import com.example.igccxi.screens.home.components.FeaturedLiveCard
@@ -88,6 +91,7 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val updateState by updateViewModel.uiState.collectAsState()
     var selectedFilter by remember { mutableStateOf(HomeFilter.ALL) }
+    var showActiveUsersDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -111,7 +115,12 @@ fun HomeScreen(
                                 fontSize = 17.sp,
                                 letterSpacing = (-0.2).sp
                             )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .clickable { showActiveUsersDialog = true }
+                            ) {
                                 Surface(
                                     shape = CircleShape,
                                     color = CricketSuccessGreen,
@@ -119,10 +128,17 @@ fun HomeScreen(
                                 ) {}
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "Cloud Sync Active",
+                                    text = if (uiState.activeUsersCount == 1) "1 Active Now" else "${uiState.activeUsersCount} Active Now",
                                     fontSize = 11.sp,
                                     color = CricketSuccessGreen,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "• Cloud Sync",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                                    fontWeight = FontWeight.Normal
                                 )
                             }
                         }
@@ -229,30 +245,31 @@ fun HomeScreen(
             )
         }
     ) { innerPadding ->
-        if (uiState.isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            val allMatches = (uiState.liveMatches + uiState.recentMatches).distinctBy { it.id }
-            val displayedMatches = when (selectedFilter) {
-                HomeFilter.ALL -> allMatches
-                HomeFilter.LIVE -> uiState.liveMatches
-                HomeFilter.COMPLETED -> uiState.recentMatches
-            }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            if (uiState.isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                val allMatches = (uiState.liveMatches + uiState.recentMatches).distinctBy { it.id }
+                val displayedMatches = when (selectedFilter) {
+                    HomeFilter.ALL -> allMatches
+                    HomeFilter.LIVE -> uiState.liveMatches
+                    HomeFilter.COMPLETED -> uiState.recentMatches
+                }
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
                 // 0. Update Notification Banner (if update is available and dialog was dismissed)
                 if (updateState.isUpdateAvailable && !updateState.showUpdateDialog && updateState.updateInfo != null) {
                     item(key = "update_available_banner") {
@@ -332,6 +349,7 @@ fun HomeScreen(
                         CleanHeroBanner(
                             totalMatchesCount = allMatches.size,
                             completedCount = uiState.recentMatches.size,
+                            activeUsersCount = uiState.activeUsersCount,
                             onCreateMatchClick = onNavigateToCreateMatch,
                             onNavigateToHistory = onNavigateToHistory,
                             onNavigateToRankings = onNavigateToRankings
@@ -424,6 +442,24 @@ fun HomeScreen(
 
                 item(key = "bottom_spacer") { Spacer(modifier = Modifier.height(72.dp)) }
             }
+
+            // Dedicated Corner Section for Number of Active Users (Bottom-Start corner)
+            ActiveUsersCornerBadge(
+                activeUsersCount = uiState.activeUsersCount,
+                onClick = { showActiveUsersDialog = true },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 16.dp, bottom = 16.dp)
+            )
+        }
+    }
+
+        // --- Active Users Presence Info Dialog ---
+        if (showActiveUsersDialog) {
+            ActiveUsersInfoDialog(
+                activeUsersCount = uiState.activeUsersCount,
+                onDismiss = { showActiveUsersDialog = false }
+            )
         }
 
         // --- In-App Auto-Updater Dialogs ---

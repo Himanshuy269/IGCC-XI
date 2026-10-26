@@ -88,4 +88,35 @@ object RepositoryProvider {
 
     fun provideInstallAppUpdateUseCase(context: Context): com.example.igccxi.domain.usecase.InstallAppUpdateUseCase =
         com.example.igccxi.domain.usecase.InstallAppUpdateUseCase(getAppUpdateRepository(context))
+
+    @Volatile
+    private var presenceRepositoryInstance: com.example.igccxi.domain.repository.PresenceRepository? = null
+
+    fun getPresenceRepository(context: Context): com.example.igccxi.domain.repository.PresenceRepository {
+        return presenceRepositoryInstance ?: synchronized(this) {
+            presenceRepositoryInstance ?: createPresenceRepository(context.applicationContext).also {
+                presenceRepositoryInstance = it
+            }
+        }
+    }
+
+    private fun createPresenceRepository(context: Context): com.example.igccxi.domain.repository.PresenceRepository {
+        return try {
+            val app = if (FirebaseApp.getApps(context).isNotEmpty()) {
+                FirebaseApp.getInstance()
+            } else {
+                FirebaseApp.initializeApp(context)
+            }
+            if (app != null) {
+                FirestorePresenceRepository()
+            } else {
+                InMemoryPresenceRepository()
+            }
+        } catch (_: Exception) {
+            InMemoryPresenceRepository()
+        }
+    }
+
+    fun provideObserveActiveUsersUseCase(context: Context): com.example.igccxi.domain.usecase.ObserveActiveUsersUseCase =
+        com.example.igccxi.domain.usecase.ObserveActiveUsersUseCase(getPresenceRepository(context))
 }
