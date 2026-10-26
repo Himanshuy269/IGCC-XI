@@ -8,8 +8,8 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import androidx.core.content.FileProvider
-import com.example.igccxi.data.model.Innings
-import com.example.igccxi.data.model.Match
+import com.example.igccxi.domain.model.Innings
+import com.example.igccxi.domain.model.Match
 import java.io.File
 import java.io.FileOutputStream
 

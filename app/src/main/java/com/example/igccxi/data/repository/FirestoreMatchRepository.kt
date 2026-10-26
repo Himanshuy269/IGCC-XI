@@ -1,6 +1,7 @@
 package com.example.igccxi.data.repository
 
-import com.example.igccxi.data.model.Match
+import com.example.igccxi.domain.model.Match
+import com.example.igccxi.domain.repository.MatchRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings

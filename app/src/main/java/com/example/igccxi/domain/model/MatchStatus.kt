@@ -1,0 +1,9 @@
+package com.example.igccxi.domain.model
+
+enum class MatchStatus {
+    NOT_STARTED,
+    INNINGS_1,
+    INNINGS_BREAK,
+    INNINGS_2,
+    COMPLETED
+}

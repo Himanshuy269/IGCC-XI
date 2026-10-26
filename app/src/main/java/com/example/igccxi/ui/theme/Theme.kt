@@ -1,53 +1,82 @@
 package com.example.igccxi.ui.theme
 
 import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
-
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+    primary = CricketGreenPrimary,
+    onPrimary = CricketGreenOnPrimary,
+    primaryContainer = CricketGreenContainer,
+    onPrimaryContainer = CricketGreenOnContainer,
+    secondary = CricketGold,
+    onSecondary = CricketOnGold,
+    secondaryContainer = CricketGoldContainer,
+    onSecondaryContainer = CricketOnGoldContainer,
+    tertiary = CricketNavy,
+    onTertiary = CricketOnNavy,
+    tertiaryContainer = CricketNavyContainer,
+    onTertiaryContainer = CricketOnNavyContainer,
+    background = CricketBackgroundLight,
+    onBackground = CricketOnSurfaceLight,
+    surface = CricketSurfaceLight,
+    onSurface = CricketOnSurfaceLight,
+    surfaceVariant = CricketSurfaceVariantLight,
+    onSurfaceVariant = CricketOnSurfaceVariantLight,
+    outline = CricketOutlineLight,
+    outlineVariant = CricketOutlineVariantLight,
+    error = CricketWicketRed,
+    errorContainer = CricketWicketContainer,
+    onError = Color.White,
+    onErrorContainer = Color(0xFF7F1D1D)
+)
 
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+private val DarkColorScheme = darkColorScheme(
+    primary = Color(0xFF4ADE80),
+    onPrimary = Color(0xFF052E16),
+    primaryContainer = Color(0xFF14532D),
+    onPrimaryContainer = Color(0xFFBBF7D0),
+    secondary = Color(0xFFFBBF24),
+    onSecondary = Color(0xFF451A03),
+    secondaryContainer = Color(0xFF78350F),
+    onSecondaryContainer = Color(0xFFFEF3C7),
+    tertiary = Color(0xFF94A3B8),
+    onTertiary = Color(0xFF0F172A),
+    background = CricketBackgroundDark,
+    onBackground = CricketOnSurfaceDark,
+    surface = CricketSurfaceDark,
+    onSurface = CricketOnSurfaceDark,
+    surfaceVariant = CricketSurfaceVariantDark,
+    onSurfaceVariant = CricketOnSurfaceVariantDark,
+    outline = CricketOutlineDark,
+    error = Color(0xFFF87171),
+    onError = Color(0xFF450A0A)
 )
 
 @Composable
 fun IGCCXITheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
+    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as? Activity)?.window
+            if (window != null) {
+                window.statusBarColor = colorScheme.surface.toArgb()
+                WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            }
+        }
     }
 
     MaterialTheme(

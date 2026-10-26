@@ -1,7 +1,7 @@
 package com.example.igccxi
 
-import com.example.igccxi.data.model.Match
-import com.example.igccxi.data.model.MatchStatus
+import com.example.igccxi.domain.model.Match
+import com.example.igccxi.domain.model.MatchStatus
 import com.example.igccxi.domain.ScoringEngine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

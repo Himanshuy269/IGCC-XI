@@ -1,7 +1,8 @@
 package com.example.igccxi.data.repository
 
 import android.content.Context
-import com.example.igccxi.data.model.Match
+import com.example.igccxi.domain.model.Match
+import com.example.igccxi.domain.repository.MatchRepository
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers

@@ -8,21 +8,47 @@ android {
     namespace = "com.example.igccxi"
     compileSdk = 37
 
+    val vCode = project.findProperty("versionCode")?.toString()?.toIntOrNull() ?: 2
+    val vName = project.findProperty("versionName")?.toString() ?: "1.1.0"
+
     defaultConfig {
         applicationId = "com.example.igccxi"
         minSdk = 24
-        targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 35
+        versionCode = vCode
+        versionName = vName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    val keystoreFile = file("keystore/release.jks")
+    if (keystoreFile.exists()) {
+        signingConfigs {
+            create("release") {
+                storeFile = keystoreFile
+                storePassword = "igccxicricketpass"
+                keyAlias = "igccxikey"
+                keyPassword = "igccxicricketpass"
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+                enableV4Signing = false
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
-            optimization {
-                enable = false
+            if (keystoreFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+            isMinifyEnabled = false
+            isShrinkResources = false
+        }
+        debug {
+            // Also sign debug builds with the proper release key so testers don't get 'testOnly' / Play Protect blocked warnings
+            if (keystoreFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
             }
         }
     }

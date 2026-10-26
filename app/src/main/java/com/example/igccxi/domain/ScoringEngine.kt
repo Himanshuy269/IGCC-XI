@@ -1,12 +1,12 @@
 package com.example.igccxi.domain
 
-import com.example.igccxi.data.model.BallEvent
-import com.example.igccxi.data.model.BallType
-import com.example.igccxi.data.model.BatterScore
-import com.example.igccxi.data.model.BowlerScore
-import com.example.igccxi.data.model.Innings
-import com.example.igccxi.data.model.Match
-import com.example.igccxi.data.model.MatchStatus
+import com.example.igccxi.domain.model.BallEvent
+import com.example.igccxi.domain.model.BallType
+import com.example.igccxi.domain.model.BatterScore
+import com.example.igccxi.domain.model.BowlerScore
+import com.example.igccxi.domain.model.Innings
+import com.example.igccxi.domain.model.Match
+import com.example.igccxi.domain.model.MatchStatus
 import java.util.UUID
 
 object ScoringEngine {
@@ -252,7 +252,16 @@ object ScoringEngine {
         var nextStrikerId = ""
 
         if (!isAllOut) {
-            val batterName = newBatterName ?: "Batter ${battersList.size + 1}"
+            val candidate = newBatterName?.trim()
+            val batterName = if (!candidate.isNullOrEmpty()) {
+                candidate
+            } else {
+                var nextNum = battersList.size + 1
+                while (battersList.any { it.name.trim().equals("Batter $nextNum", ignoreCase = true) }) {
+                    nextNum++
+                }
+                "Batter $nextNum"
+            }
             val newBatter = BatterScore(
                 id = "b${battersList.size + 1}_${System.currentTimeMillis() % 1000}",
                 name = batterName
@@ -382,9 +391,16 @@ object ScoringEngine {
         val battingTeam = match.innings1.bowlingTeam
         val bowlingTeam = match.innings1.battingTeam
 
-        val striker = BatterScore(id = "b2_1", name = strikerName)
-        val nonStriker = BatterScore(id = "b2_2", name = nonStrikerName)
-        val bowler = BowlerScore(id = "bw2_1", name = bowlerName)
+        val s = strikerName.trim().ifEmpty { "Chasing Striker 1" }
+        var ns = nonStrikerName.trim().ifEmpty { "Chasing Striker 2" }
+        if (s.equals(ns, ignoreCase = true)) {
+            ns = "$ns (2)"
+        }
+        val b = bowlerName.trim().ifEmpty { "Opening Bowler" }
+
+        val striker = BatterScore(id = "b2_1", name = s)
+        val nonStriker = BatterScore(id = "b2_2", name = ns)
+        val bowler = BowlerScore(id = "bw2_1", name = b)
 
         val innings2 = Innings(
             inningsNumber = 2,

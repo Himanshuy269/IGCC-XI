@@ -1,6 +1,7 @@
 package com.example.igccxi.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudDone
-import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -25,8 +25,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,11 +35,16 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.igccxi.data.model.Match
-import com.example.igccxi.data.model.MatchStatus
 import com.example.igccxi.domain.PdfScorecardExporter
+import com.example.igccxi.domain.model.Match
+import com.example.igccxi.domain.model.MatchStatus
+import com.example.igccxi.ui.theme.CricketGold
+import com.example.igccxi.ui.theme.CricketGreenPrimary
+import com.example.igccxi.ui.theme.CricketLiveRed
+import com.example.igccxi.ui.theme.CricketSuccessGreen
 
 @Composable
 fun ScoreCardSummary(
@@ -55,27 +58,30 @@ fun ScoreCardSummary(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(18.dp))
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column {
-            // Header Top Bar
+            // Header Bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
                         if (isLive) Brush.horizontalGradient(
-                            listOf(Color(0xFF1B5E20), Color(0xFF2E7D32))
+                            listOf(Color(0xFF0F3B20), Color(0xFF195E34))
                         ) else Brush.horizontalGradient(
-                            listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surfaceVariant)
+                            listOf(
+                                MaterialTheme.colorScheme.surfaceVariant,
+                                MaterialTheme.colorScheme.surfaceVariant
+                            )
                         )
                     )
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .padding(horizontal = 14.dp, vertical = 9.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -83,10 +89,10 @@ fun ScoreCardSummary(
                     StatusBadge(status = match.status, isLive = isLive)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "${match.totalOvers} Overs • ${match.date}",
-                        style = MaterialTheme.typography.labelMedium,
+                        text = "${match.totalOvers} Ov • ${match.date}",
+                        style = MaterialTheme.typography.labelSmall,
                         color = if (isLive) Color.White.copy(alpha = 0.9f) else MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
 
@@ -94,15 +100,15 @@ fun ScoreCardSummary(
                     Icon(
                         imageVector = Icons.Default.CloudDone,
                         contentDescription = "Cloud Saved",
-                        tint = if (isLive) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
+                        tint = if (isLive) Color.White.copy(alpha = 0.8f) else CricketSuccessGreen,
+                        modifier = Modifier.size(15.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(3.dp))
                     Text(
                         text = "Cloud",
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isLive) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.primary
+                        fontWeight = FontWeight.Bold,
+                        color = if (isLive) Color.White.copy(alpha = 0.8f) else CricketSuccessGreen
                     )
                 }
             }
@@ -138,8 +144,8 @@ fun ScoreCardSummary(
                     isBattingNow = match.currentInningsNumber == 2 && isLive
                 )
 
-                Spacer(modifier = Modifier.height(14.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // Bottom Status Line & Quick Actions
@@ -157,32 +163,34 @@ fun ScoreCardSummary(
                             if (needed > 0) "Needs $needed runs in $ballsLeft balls" else "Target achieved"
                         }
                         MatchStatus.INNINGS_1 -> "CRR: ${inn1.currentRunRateFormatted}"
-                        MatchStatus.NOT_STARTED -> "Upcoming match"
+                        MatchStatus.NOT_STARTED -> "Ready to start"
                     }
 
                     Text(
                         text = summaryText,
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
-                        color = if (match.status == MatchStatus.COMPLETED) {
-                            MaterialTheme.colorScheme.secondary
-                        } else {
-                            Color(0xFF2E7D32)
+                        color = when (match.status) {
+                            MatchStatus.COMPLETED -> CricketGold
+                            MatchStatus.INNINGS_1, MatchStatus.INNINGS_2 -> CricketSuccessGreen
+                            else -> MaterialTheme.colorScheme.primary
                         },
-                        modifier = Modifier.weight(1f)
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f).padding(end = 8.dp)
                     )
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         // PDF Quick Action
                         IconButton(
                             onClick = { PdfScorecardExporter.generateAndSharePdf(context, match) },
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(30.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.PictureAsPdf,
                                 contentDescription = "Export PDF",
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(17.dp)
                             )
                         }
 
@@ -194,7 +202,7 @@ fun ScoreCardSummary(
                         ) {
                             Text(
                                 text = if (isLive) "Score" else "Scorecard",
-                                style = MaterialTheme.typography.labelMedium,
+                                style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -202,7 +210,7 @@ fun ScoreCardSummary(
                                 imageVector = Icons.Default.ChevronRight,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     }
@@ -228,9 +236,8 @@ private fun TeamScoreRow(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.weight(1f)
         ) {
-            // Team Avatar Circle
             Surface(
-                modifier = Modifier.size(36.dp),
+                modifier = Modifier.size(34.dp),
                 shape = CircleShape,
                 color = if (isBattingNow) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
             ) {
@@ -238,7 +245,7 @@ private fun TeamScoreRow(
                     Text(
                         text = teamName.take(3).uppercase(),
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.ExtraBold,
                         color = if (isBattingNow) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -246,18 +253,26 @@ private fun TeamScoreRow(
 
             Spacer(modifier = Modifier.width(10.dp))
 
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = teamName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = if (isBattingNow) FontWeight.Bold else FontWeight.SemiBold
-                    )
-                    if (isBattingNow) {
-                        Spacer(modifier = Modifier.width(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = teamName,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = if (isBattingNow) FontWeight.Black else FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (isBattingNow) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
                         Text(
-                            text = "🏏",
-                            fontSize = 12.sp
+                            text = "BATTING",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                         )
                     }
                 }
@@ -287,35 +302,35 @@ private fun TeamScoreRow(
 @Composable
 fun StatusBadge(status: MatchStatus, isLive: Boolean = false) {
     val (label, bg, fg) = when (status) {
-        MatchStatus.INNINGS_1, MatchStatus.INNINGS_2 -> Triple("LIVE", Color.White, Color(0xFF1B5E20))
-        MatchStatus.INNINGS_BREAK -> Triple("BREAK", Color(0xFFFFF8E1), Color(0xFFF57F17))
-        MatchStatus.COMPLETED -> Triple("FINISHED", Color(0xFFEDE7F6), Color(0xFF512DA8))
-        MatchStatus.NOT_STARTED -> Triple("UPCOMING", Color(0xFFECEFF1), Color(0xFF455A64))
+        MatchStatus.INNINGS_1, MatchStatus.INNINGS_2 -> Triple("LIVE", CricketLiveRed, Color.White)
+        MatchStatus.INNINGS_BREAK -> Triple("BREAK", Color(0xFFFEF3C7), Color(0xFFB45309))
+        MatchStatus.COMPLETED -> Triple("FINISHED", Color(0xFFE2E8F0), Color(0xFF334155))
+        MatchStatus.NOT_STARTED -> Triple("READY", Color(0xFFF1F5F9), Color(0xFF475569))
     }
 
-    SuggestionChip(
-        onClick = {},
-        label = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (isLive) {
-                    Icon(
-                        imageVector = Icons.Default.FiberManualRecord,
-                        contentDescription = null,
-                        tint = Color(0xFFD32F2F),
-                        modifier = Modifier.size(10.dp).padding(end = 2.dp)
-                    )
-                }
-                Text(
-                    text = label,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = fg
-                )
+    Surface(
+        color = bg,
+        shape = RoundedCornerShape(6.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        ) {
+            if (isLive) {
+                Surface(
+                    shape = CircleShape,
+                    color = Color.White,
+                    modifier = Modifier.size(5.dp)
+                ) {}
+                Spacer(modifier = Modifier.width(4.dp))
             }
-        },
-        colors = SuggestionChipDefaults.suggestionChipColors(containerColor = bg),
-        border = null,
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.height(26.dp)
-    )
+            Text(
+                text = label,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Black,
+                color = fg,
+                letterSpacing = 0.5.sp
+            )
+        }
+    }
 }

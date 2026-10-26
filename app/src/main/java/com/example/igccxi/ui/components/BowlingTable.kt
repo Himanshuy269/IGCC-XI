@@ -19,7 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.igccxi.data.model.Innings
+import com.example.igccxi.domain.model.Innings
 
 @Composable
 fun BowlingTable(

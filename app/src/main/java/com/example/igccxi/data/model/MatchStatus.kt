@@ -1,9 +1,3 @@
 package com.example.igccxi.data.model
 
-enum class MatchStatus {
-    NOT_STARTED,
-    INNINGS_1,
-    INNINGS_BREAK,
-    INNINGS_2,
-    COMPLETED
-}
+typealias MatchStatus = com.example.igccxi.domain.model.MatchStatus
