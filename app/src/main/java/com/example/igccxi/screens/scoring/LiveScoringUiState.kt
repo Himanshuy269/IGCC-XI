@@ -7,6 +7,7 @@ data class LiveScoringUiState(
     val canUndo: Boolean = false,
     val showWicketDialog: Boolean = false,
     val showBowlerDialog: Boolean = false,
+    val showExtrasDialog: Boolean = false,
     val isOverCompleteBowlerChange: Boolean = false,
     val completedOverNumber: Int = 0,
     val showSecondInningsDialog: Boolean = false,

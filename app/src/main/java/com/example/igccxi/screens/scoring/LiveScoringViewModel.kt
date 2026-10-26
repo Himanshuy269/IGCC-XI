@@ -98,14 +98,56 @@ class LiveScoringViewModel @JvmOverloads constructor(
     fun showWicketDialog() = _uiState.update { it.copy(showWicketDialog = true) }
     fun dismissWicketDialog() = _uiState.update { it.copy(showWicketDialog = false) }
 
-    fun recordWicket(dismissal: String, newBatterName: String?) {
+    fun showExtrasDialog() = _uiState.update { it.copy(showExtrasDialog = true) }
+    fun dismissExtrasDialog() = _uiState.update { it.copy(showExtrasDialog = false) }
+
+    fun recordBye(runs: Int = 1) {
+        val current = _uiState.value.match ?: return
+        val prevOvers = current.currentInnings.oversBowled
+        pushHistory(current)
+        val updated = ScoringEngine.recordBye(current, runs)
+        dismissExtrasDialog()
+        updateMatchInRepository(updated)
+
+        if (updated.isScorable && updated.currentInnings.oversBowled > prevOvers) {
+            _uiState.update {
+                it.copy(
+                    showBowlerDialog = true,
+                    isOverCompleteBowlerChange = true,
+                    completedOverNumber = updated.currentInnings.oversBowled
+                )
+            }
+        }
+    }
+
+    fun recordLegBye(runs: Int = 1) {
+        val current = _uiState.value.match ?: return
+        val prevOvers = current.currentInnings.oversBowled
+        pushHistory(current)
+        val updated = ScoringEngine.recordLegBye(current, runs)
+        dismissExtrasDialog()
+        updateMatchInRepository(updated)
+
+        if (updated.isScorable && updated.currentInnings.oversBowled > prevOvers) {
+            _uiState.update {
+                it.copy(
+                    showBowlerDialog = true,
+                    isOverCompleteBowlerChange = true,
+                    completedOverNumber = updated.currentInnings.oversBowled
+                )
+            }
+        }
+    }
+
+    fun recordWicket(dismissal: String, newBatterName: String?, isStrikerOut: Boolean = true) {
         val current = _uiState.value.match ?: return
         val prevOvers = current.currentInnings.oversBowled
         pushHistory(current)
         val updated = ScoringEngine.recordWicket(
             match = current,
             dismissalDescription = dismissal,
-            newBatterName = newBatterName?.trim()?.ifEmpty { null }
+            newBatterName = newBatterName?.trim()?.ifEmpty { null },
+            isStrikerOut = isStrikerOut
         )
         dismissWicketDialog()
         updateMatchInRepository(updated)
@@ -191,7 +233,13 @@ class LiveScoringViewModel @JvmOverloads constructor(
         val current = _uiState.value.match ?: return
         if (newOvers < 1 || newOvers > 100) return
         pushHistory(current)
-        val updated = current.copy(totalOvers = newOvers)
+        var updated = current.copy(totalOvers = newOvers)
+        if (updated.isScorable && updated.currentInnings.oversBowled >= newOvers) {
+            updated = ScoringEngine.endInnings(updated)
+            if (updated.status == MatchStatus.INNINGS_BREAK) {
+                _uiState.update { it.copy(showSecondInningsDialog = true) }
+            }
+        }
         updateMatchInRepository(updated)
     }
 

@@ -1,5 +1,6 @@
 package com.example.igccxi
 
+import com.example.igccxi.domain.model.Innings
 import com.example.igccxi.domain.model.Match
 import com.example.igccxi.domain.model.MatchStatus
 import com.example.igccxi.domain.ScoringEngine
@@ -252,5 +253,127 @@ class ScoringEngineTest {
         )
         assertEquals("Royal Challengers", matchFallback.currentInnings.battingTeam)
         assertEquals("Super Kings", matchFallback.currentInnings.bowlingTeam)
+    }
+
+    @Test
+    fun testMaidenOverCalculation_incrementsOnZeroRunsConceded() {
+        var current = match
+        repeat(6) {
+            current = ScoringEngine.recordRuns(current, 0)
+        }
+        val bowler = current.currentInnings.bowlers.find { it.name == "Starc" }
+        assertEquals(1, bowler?.oversBowled)
+        assertEquals(1, bowler?.maidens)
+        assertEquals(0, bowler?.runsConceded)
+    }
+
+    @Test
+    fun testMaidenOver_notRecordedWhenRunsConceded() {
+        var current = match
+        repeat(5) {
+            current = ScoringEngine.recordRuns(current, 0)
+        }
+        current = ScoringEngine.recordRuns(current, 1) // 1 run conceded on 6th ball
+        val bowler = current.currentInnings.bowlers.find { it.name == "Starc" }
+        assertEquals(1, bowler?.oversBowled)
+        assertEquals(0, bowler?.maidens)
+        assertEquals(1, bowler?.runsConceded)
+    }
+
+    @Test
+    fun testRunOut_doesNotCreditBowlerWithWicket() {
+        var current = match
+        // Striker run out
+        current = ScoringEngine.recordWicket(
+            match = current,
+            dismissalDescription = "run out (Kohli)",
+            newBatterName = "Pant",
+            isStrikerOut = true
+        )
+        assertEquals(1, current.currentInnings.wickets)
+        val bowler = current.currentInnings.bowlers.find { it.name == "Starc" }
+        // Bowler should NOT receive credit for a run out (MCC Law 38)
+        assertEquals(0, bowler?.wickets)
+        assertEquals("Pant", current.currentInnings.getStriker()?.name)
+        assertEquals("Kohli", current.currentInnings.getNonStriker()?.name)
+    }
+
+    @Test
+    fun testRunOutNonStriker_dismissesNonStrikerLeavesStriker() {
+        var current = match
+        // Non-striker (Kohli) run out
+        current = ScoringEngine.recordWicket(
+            match = current,
+            dismissalDescription = "run out (Direct Hit)",
+            newBatterName = "Pant",
+            isStrikerOut = false
+        )
+        assertEquals(1, current.currentInnings.wickets)
+        // Striker (Rohit) remains on strike
+        assertEquals("Rohit", current.currentInnings.getStriker()?.name)
+        // Non-striker is now Pant
+        assertEquals("Pant", current.currentInnings.getNonStriker()?.name)
+        val kohli = current.currentInnings.batters.find { it.name == "Kohli" }
+        assertTrue(kohli?.isOut == true)
+        val bowler = current.currentInnings.bowlers.find { it.name == "Starc" }
+        assertEquals(0, bowler?.wickets)
+    }
+
+    @Test
+    fun testByesAndLegByes_accrueToTeamAndExtrasNotBatsmanOrBowler() {
+        var current = match
+        // Rohit faces ball 1, runs 1 Bye
+        current = ScoringEngine.recordBye(current, 1)
+        assertEquals(1, current.currentInnings.totalRuns)
+        assertEquals(1, current.currentInnings.extras.byes)
+        assertEquals(1, current.currentInnings.ballsBowledInOver)
+
+        // Rohit ballsFaced increments, but personal runs stay 0
+        val rohit = current.currentInnings.batters.find { it.name == "Rohit" }
+        assertEquals(0, rohit?.runs)
+        assertEquals(1, rohit?.ballsFaced)
+
+        // Bowler runsConceded stays 0
+        val bowler = current.currentInnings.bowlers.find { it.name == "Starc" }
+        assertEquals(0, bowler?.runsConceded)
+
+        // Odd runs swap strike -> Kohli is now striker
+        assertEquals("Kohli", current.currentInnings.getStriker()?.name)
+
+        // Kohli runs 2 Leg Byes (even -> strike stays with Kohli)
+        current = ScoringEngine.recordLegBye(current, 2)
+        assertEquals(3, current.currentInnings.totalRuns)
+        assertEquals(2, current.currentInnings.extras.legByes)
+        assertEquals(2, current.currentInnings.ballsBowledInOver)
+        assertEquals("Kohli", current.currentInnings.getStriker()?.name)
+    }
+
+    @Test
+    fun testFinalResultGrammar_singularRunAndWicket() {
+        // Target is 5, Team B scores 5 -> 10 - 9 wickets = 1 wicket win
+        val m1 = Match(
+            totalOvers = 5,
+            teamA = "India",
+            teamB = "Australia",
+            currentInningsNumber = 2,
+            target = 5,
+            innings1 = Innings(totalRuns = 4, isCompleted = true),
+            innings2 = Innings(battingTeam = "Australia", totalRuns = 5, wickets = 9)
+        )
+        val resWicket = ScoringEngine.calculateFinalResult(m1)
+        assertEquals("Australia won by 1 wicket", resWicket)
+
+        // Team A defended by 1 run
+        val m2 = Match(
+            totalOvers = 5,
+            teamA = "India",
+            teamB = "Australia",
+            currentInningsNumber = 2,
+            target = 10,
+            innings1 = Innings(battingTeam = "India", totalRuns = 9, isCompleted = true),
+            innings2 = Innings(battingTeam = "Australia", totalRuns = 8, isCompleted = true)
+        )
+        val resRun = ScoringEngine.calculateFinalResult(m2)
+        assertEquals("India won by 1 run", resRun)
     }
 }

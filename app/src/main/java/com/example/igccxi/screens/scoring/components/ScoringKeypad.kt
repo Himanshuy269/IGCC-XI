@@ -49,6 +49,7 @@ fun ScoringKeypad(
     onRuns: (Int) -> Unit,
     onWide: () -> Unit,
     onNoBall: () -> Unit,
+    onExtrasClick: () -> Unit = {},
     onWicketClick: () -> Unit,
     onUndoClick: () -> Unit,
     onEndInningsClick: () -> Unit,
@@ -172,7 +173,7 @@ fun ScoringKeypad(
                 )
             }
 
-            // Row 3: Wicket & Undo
+            // Row 3: Wicket, Extras, and Undo
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -180,7 +181,7 @@ fun ScoringKeypad(
                 Button(
                     onClick = onWicketClick,
                     modifier = Modifier
-                        .weight(1.5f)
+                        .weight(1.3f)
                         .height(54.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
@@ -192,14 +193,33 @@ fun ScoringKeypad(
                     Icon(
                         imageVector = Icons.Default.SportsCricket,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(17.dp)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "OUT / WICKET",
-                        fontSize = 14.sp,
+                        text = "OUT",
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 0.5.sp
+                    )
+                }
+
+                Button(
+                    onClick = onExtrasClick,
+                    modifier = Modifier
+                        .weight(1.1f)
+                        .height(54.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = CricketExtraAmber,
+                        contentColor = Color.White
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp)
+                ) {
+                    Text(
+                        text = "Extras...",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Black
                     )
                 }
 
@@ -207,7 +227,7 @@ fun ScoringKeypad(
                     onClick = onUndoClick,
                     enabled = canUndo,
                     modifier = Modifier
-                        .weight(1f)
+                        .weight(1.1f)
                         .height(54.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
@@ -220,12 +240,12 @@ fun ScoringKeypad(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Undo,
                         contentDescription = "Undo",
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(15.dp)
                     )
-                    Spacer(modifier = Modifier.width(5.dp))
+                    Spacer(modifier = Modifier.width(3.dp))
                     Text(
                         text = "Undo",
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }

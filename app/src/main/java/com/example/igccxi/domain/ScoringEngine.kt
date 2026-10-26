@@ -78,11 +78,27 @@ object ScoringEngine {
         val nextBallsInOver = current.ballsBowledInOver + 1
         val isOverComplete = nextBallsInOver >= 6
 
-        val updatedBowler = bowler.copy(
+        var updatedBowler = bowler.copy(
             runsConceded = bowler.runsConceded + runs,
             oversBowled = if (isOverComplete) bowler.oversBowled + 1 else bowler.oversBowled,
             ballsBowledInOver = if (isOverComplete) 0 else nextBallsInOver
         )
+
+        val ballEvent = BallEvent(
+            id = UUID.randomUUID().toString(),
+            type = BallType.NORMAL,
+            runsOffBat = runs,
+            extraRuns = 0,
+            isLegalBall = true,
+            isWicket = false,
+            batterId = striker.id,
+            bowlerId = bowler.id,
+            displayText = runs.toString()
+        )
+
+        if (isOverComplete) {
+            updatedBowler = checkAndApplyMaiden(updatedBowler, current.recentBalls, ballEvent)
+        }
 
         // 3. Batters & Bowlers list updates
         val updatedBatters = current.batters.map { if (it.id == updatedStriker.id) updatedStriker else it }
@@ -103,18 +119,6 @@ object ScoringEngine {
             newStrikerId = newNonStrikerId
             newNonStrikerId = temp
         }
-
-        val ballEvent = BallEvent(
-            id = UUID.randomUUID().toString(),
-            type = BallType.NORMAL,
-            runsOffBat = runs,
-            extraRuns = 0,
-            isLegalBall = true,
-            isWicket = false,
-            batterId = striker.id,
-            bowlerId = bowler.id,
-            displayText = runs.toString()
-        )
 
         val updatedInnings = current.copy(
             totalRuns = current.totalRuns + runs,
@@ -229,37 +233,86 @@ object ScoringEngine {
 
     /**
      * Records a Wicket delivery. Legal ball, increments wickets, marks batter out.
+     * Enforces MCC Law 33-40: Run outs and retirements do not credit the bowler with a wicket.
+     * Supports dismissing either the striker or the non-striker (e.g. run out at non-striker end).
      */
     fun recordWicket(
         match: Match,
         dismissalDescription: String = "bowled",
-        newBatterName: String? = null
+        newBatterName: String? = null,
+        isStrikerOut: Boolean = true
     ): Match {
         if (!match.isScorable) return match
         val current = match.currentInnings
         val striker = current.getStriker() ?: return match
+        val nonStriker = current.getNonStriker() ?: return match
         val bowler = current.getCurrentBowler() ?: return match
 
-        val updatedStriker = striker.copy(
-            ballsFaced = striker.ballsFaced + 1,
-            isOut = true,
-            dismissal = dismissalDescription
-        )
+        // In cricket rules (MCC Law 33-40):
+        // Run outs, retired hurt/out, timed out, and obstructing the field are NOT credited to the bowler.
+        val isBowlerWicket = !dismissalDescription.contains("run out", ignoreCase = true) &&
+                !dismissalDescription.contains("retired", ignoreCase = true) &&
+                !dismissalDescription.contains("timed out", ignoreCase = true) &&
+                !dismissalDescription.contains("obstructing", ignoreCase = true)
 
         val nextBallsInOver = current.ballsBowledInOver + 1
         val isOverComplete = nextBallsInOver >= 6
 
-        val updatedBowler = bowler.copy(
-            wickets = bowler.wickets + 1,
+        var updatedBowler = bowler.copy(
+            wickets = if (isBowlerWicket) bowler.wickets + 1 else bowler.wickets,
             oversBowled = if (isOverComplete) bowler.oversBowled + 1 else bowler.oversBowled,
             ballsBowledInOver = if (isOverComplete) 0 else nextBallsInOver
         )
 
+        val ballEvent = BallEvent(
+            id = UUID.randomUUID().toString(),
+            type = BallType.WICKET,
+            runsOffBat = 0,
+            extraRuns = 0,
+            isLegalBall = true,
+            isWicket = true,
+            batterId = if (isStrikerOut) striker.id else nonStriker.id,
+            bowlerId = bowler.id,
+            displayText = if (isBowlerWicket) "W" else "W(RO)"
+        )
+
+        if (isOverComplete) {
+            updatedBowler = checkAndApplyMaiden(updatedBowler, current.recentBalls, ballEvent)
+        }
+
+        // Striker always faced this legal delivery
+        val updatedStriker = if (isStrikerOut) {
+            striker.copy(
+                ballsFaced = striker.ballsFaced + 1,
+                isOut = true,
+                dismissal = dismissalDescription
+            )
+        } else {
+            striker.copy(ballsFaced = striker.ballsFaced + 1)
+        }
+
+        val updatedNonStriker = if (!isStrikerOut) {
+            nonStriker.copy(
+                isOut = true,
+                dismissal = dismissalDescription
+            )
+        } else {
+            nonStriker
+        }
+
         val nextWickets = current.wickets + 1
         val isAllOut = nextWickets >= 10
 
-        var battersList = current.batters.map { if (it.id == updatedStriker.id) updatedStriker else it }
-        var nextStrikerId = ""
+        var battersList = current.batters.map {
+            when (it.id) {
+                updatedStriker.id -> updatedStriker
+                updatedNonStriker.id -> updatedNonStriker
+                else -> it
+            }
+        }
+
+        var nextStrikerId = updatedStriker.id
+        var nextNonStrikerId = updatedNonStriker.id
 
         if (!isAllOut) {
             val candidate = newBatterName?.trim()
@@ -277,28 +330,22 @@ object ScoringEngine {
                 name = batterName
             )
             battersList = battersList + newBatter
-            nextStrikerId = newBatter.id
+
+            if (isStrikerOut) {
+                nextStrikerId = newBatter.id
+            } else {
+                nextNonStrikerId = newBatter.id
+            }
+        } else {
+            if (isStrikerOut) nextStrikerId = "" else nextNonStrikerId = ""
         }
 
-        var newNonStrikerId = current.currentNonStrikerId
         if (isOverComplete && !isAllOut) {
             // Swap strike on end of over
             val temp = nextStrikerId
-            nextStrikerId = newNonStrikerId
-            newNonStrikerId = temp
+            nextStrikerId = nextNonStrikerId
+            nextNonStrikerId = temp
         }
-
-        val ballEvent = BallEvent(
-            id = UUID.randomUUID().toString(),
-            type = BallType.WICKET,
-            runsOffBat = 0,
-            extraRuns = 0,
-            isLegalBall = true,
-            isWicket = true,
-            batterId = striker.id,
-            bowlerId = bowler.id,
-            displayText = "W"
-        )
 
         val updatedInnings = current.copy(
             wickets = nextWickets,
@@ -307,11 +354,189 @@ object ScoringEngine {
             batters = battersList,
             bowlers = current.bowlers.map { if (it.id == updatedBowler.id) updatedBowler else it },
             currentStrikerId = nextStrikerId,
+            currentNonStrikerId = nextNonStrikerId,
+            recentBalls = current.recentBalls + ballEvent
+        )
+
+        return finalizeBall(match, updatedInnings)
+    }
+
+    /**
+     * Records Byes (MCC Law 23: legal delivery, runs added to team & extras.byes,
+     * batsman faced ball but no runs off bat, bowler not charged).
+     */
+    fun recordBye(match: Match, runs: Int = 1): Match {
+        if (!match.isScorable || runs < 1) return match
+        val current = match.currentInnings
+        val striker = current.getStriker() ?: return match
+        val bowler = current.getCurrentBowler() ?: return match
+
+        val nextBallsInOver = current.ballsBowledInOver + 1
+        val isOverComplete = nextBallsInOver >= 6
+
+        val updatedStriker = striker.copy(
+            ballsFaced = striker.ballsFaced + 1
+        )
+
+        var updatedBowler = bowler.copy(
+            oversBowled = if (isOverComplete) bowler.oversBowled + 1 else bowler.oversBowled,
+            ballsBowledInOver = if (isOverComplete) 0 else nextBallsInOver
+        )
+
+        val ballEvent = BallEvent(
+            id = UUID.randomUUID().toString(),
+            type = BallType.BYE,
+            runsOffBat = 0,
+            extraRuns = runs,
+            isLegalBall = true,
+            isWicket = false,
+            batterId = striker.id,
+            bowlerId = bowler.id,
+            displayText = if (runs > 1) "${runs}B" else "B"
+        )
+
+        if (isOverComplete) {
+            updatedBowler = checkAndApplyMaiden(updatedBowler, current.recentBalls, ballEvent)
+        }
+
+        val updatedBatters = current.batters.map { if (it.id == updatedStriker.id) updatedStriker else it }
+        val updatedBowlers = current.bowlers.map { if (it.id == updatedBowler.id) updatedBowler else it }
+        val updatedExtras = current.extras.copy(byes = current.extras.byes + runs)
+
+        // Strike rotation on odd runs
+        var newStrikerId = current.currentStrikerId
+        var newNonStrikerId = current.currentNonStrikerId
+        if (runs % 2 != 0) {
+            val temp = newStrikerId
+            newStrikerId = newNonStrikerId
+            newNonStrikerId = temp
+        }
+        if (isOverComplete) {
+            val temp = newStrikerId
+            newStrikerId = newNonStrikerId
+            newNonStrikerId = temp
+        }
+
+        val updatedInnings = current.copy(
+            totalRuns = current.totalRuns + runs,
+            oversBowled = if (isOverComplete) current.oversBowled + 1 else current.oversBowled,
+            ballsBowledInOver = if (isOverComplete) 0 else nextBallsInOver,
+            extras = updatedExtras,
+            batters = updatedBatters,
+            bowlers = updatedBowlers,
+            currentStrikerId = newStrikerId,
             currentNonStrikerId = newNonStrikerId,
             recentBalls = current.recentBalls + ballEvent
         )
 
         return finalizeBall(match, updatedInnings)
+    }
+
+    /**
+     * Records Leg Byes (MCC Law 24: legal delivery, runs added to team & extras.legByes,
+     * batsman faced ball but no runs off bat, bowler not charged).
+     */
+    fun recordLegBye(match: Match, runs: Int = 1): Match {
+        if (!match.isScorable || runs < 1) return match
+        val current = match.currentInnings
+        val striker = current.getStriker() ?: return match
+        val bowler = current.getCurrentBowler() ?: return match
+
+        val nextBallsInOver = current.ballsBowledInOver + 1
+        val isOverComplete = nextBallsInOver >= 6
+
+        val updatedStriker = striker.copy(
+            ballsFaced = striker.ballsFaced + 1
+        )
+
+        var updatedBowler = bowler.copy(
+            oversBowled = if (isOverComplete) bowler.oversBowled + 1 else bowler.oversBowled,
+            ballsBowledInOver = if (isOverComplete) 0 else nextBallsInOver
+        )
+
+        val ballEvent = BallEvent(
+            id = UUID.randomUUID().toString(),
+            type = BallType.LEG_BYE,
+            runsOffBat = 0,
+            extraRuns = runs,
+            isLegalBall = true,
+            isWicket = false,
+            batterId = striker.id,
+            bowlerId = bowler.id,
+            displayText = if (runs > 1) "${runs}Lb" else "Lb"
+        )
+
+        if (isOverComplete) {
+            updatedBowler = checkAndApplyMaiden(updatedBowler, current.recentBalls, ballEvent)
+        }
+
+        val updatedBatters = current.batters.map { if (it.id == updatedStriker.id) updatedStriker else it }
+        val updatedBowlers = current.bowlers.map { if (it.id == updatedBowler.id) updatedBowler else it }
+        val updatedExtras = current.extras.copy(legByes = current.extras.legByes + runs)
+
+        // Strike rotation on odd runs
+        var newStrikerId = current.currentStrikerId
+        var newNonStrikerId = current.currentNonStrikerId
+        if (runs % 2 != 0) {
+            val temp = newStrikerId
+            newStrikerId = newNonStrikerId
+            newNonStrikerId = temp
+        }
+        if (isOverComplete) {
+            val temp = newStrikerId
+            newStrikerId = newNonStrikerId
+            newNonStrikerId = temp
+        }
+
+        val updatedInnings = current.copy(
+            totalRuns = current.totalRuns + runs,
+            oversBowled = if (isOverComplete) current.oversBowled + 1 else current.oversBowled,
+            ballsBowledInOver = if (isOverComplete) 0 else nextBallsInOver,
+            extras = updatedExtras,
+            batters = updatedBatters,
+            bowlers = updatedBowlers,
+            currentStrikerId = newStrikerId,
+            currentNonStrikerId = newNonStrikerId,
+            recentBalls = current.recentBalls + ballEvent
+        )
+
+        return finalizeBall(match, updatedInnings)
+    }
+
+    /**
+     * Checks if a completed over was a maiden over (0 runs conceded off the bowler).
+     * Byes and leg-byes are fielding extras and do not prevent a maiden.
+     */
+    private fun checkAndApplyMaiden(
+        bowler: BowlerScore,
+        currentRecentBalls: List<BallEvent>,
+        lastBallEvent: BallEvent
+    ): BowlerScore {
+        val ballsInOver = mutableListOf<BallEvent>()
+        ballsInOver.add(lastBallEvent)
+        var legalCount = if (lastBallEvent.isLegalBall) 1 else 0
+
+        for (i in currentRecentBalls.indices.reversed()) {
+            if (legalCount >= 6) break
+            val b = currentRecentBalls[i]
+            if (b.bowlerId == bowler.id) {
+                ballsInOver.add(b)
+                if (b.isLegalBall) {
+                    legalCount++
+                }
+            }
+        }
+
+        val runsConcededInOver = ballsInOver.sumOf { ball ->
+            val bowlerExtras = if (ball.type == BallType.WIDE || ball.type == BallType.NO_BALL) ball.extraRuns else 0
+            ball.runsOffBat + bowlerExtras
+        }
+
+        return if (runsConcededInOver == 0) {
+            bowler.copy(maidens = bowler.maidens + 1)
+        } else {
+            bowler
+        }
     }
 
     /**
@@ -447,7 +672,8 @@ object ScoringEngine {
             // Check if chasing team chased down target
             if (updatedInnings.totalRuns >= target) {
                 val wicketsRemaining = 10 - updatedInnings.wickets
-                val result = "${updatedInnings.battingTeam} won by $wicketsRemaining wickets"
+                val wText = if (wicketsRemaining == 1) "1 wicket" else "$wicketsRemaining wickets"
+                val result = "${updatedInnings.battingTeam} won by $wText"
                 return match.copy(
                     innings2 = updatedInnings.copy(isCompleted = true),
                     status = MatchStatus.COMPLETED,
@@ -497,11 +723,13 @@ object ScoringEngine {
         return when {
             inn2.totalRuns > inn1.totalRuns -> {
                 val wicketsLeft = 10 - inn2.wickets
-                "${inn2.battingTeam} won by $wicketsLeft wickets"
+                val wText = if (wicketsLeft == 1) "1 wicket" else "$wicketsLeft wickets"
+                "${inn2.battingTeam} won by $wText"
             }
             inn1.totalRuns > inn2.totalRuns -> {
                 val runsDiff = inn1.totalRuns - inn2.totalRuns
-                "${inn1.battingTeam} won by $runsDiff runs"
+                val rText = if (runsDiff == 1) "1 run" else "$runsDiff runs"
+                "${inn1.battingTeam} won by $rText"
             }
             else -> "Match tied"
         }

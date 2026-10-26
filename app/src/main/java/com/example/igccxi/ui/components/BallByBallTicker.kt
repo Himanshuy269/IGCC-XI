@@ -92,6 +92,10 @@ fun BallChip(ball: BallEvent) {
             bgColor = CricketExtraAmber
             textColor = Color.White
         }
+        ball.type == BallType.BYE || ball.type == BallType.LEG_BYE -> {
+            bgColor = MaterialTheme.colorScheme.tertiaryContainer
+            textColor = MaterialTheme.colorScheme.onTertiaryContainer
+        }
         ball.runsOffBat == 0 -> {
             bgColor = MaterialTheme.colorScheme.surfaceVariant
             textColor = MaterialTheme.colorScheme.onSurfaceVariant

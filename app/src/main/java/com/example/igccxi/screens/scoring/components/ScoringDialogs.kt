@@ -25,6 +25,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,8 +42,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.igccxi.ui.theme.CricketExtraAmber
 import com.example.igccxi.ui.theme.CricketGold
 import com.example.igccxi.ui.theme.CricketGreenPrimary
+import com.example.igccxi.ui.theme.CricketSixPurple
 import com.example.igccxi.ui.theme.CricketWicketContainer
 import com.example.igccxi.ui.theme.CricketWicketRed
 
@@ -50,17 +53,22 @@ import com.example.igccxi.ui.theme.CricketWicketRed
 @Composable
 fun WicketDialog(
     existingBatterNames: List<String> = emptyList(),
+    strikerName: String = "",
+    nonStrikerName: String = "",
+    currentWickets: Int = 0,
     onDismiss: () -> Unit,
-    onConfirm: (dismissal: String, newBatterName: String) -> Unit
+    onConfirm: (dismissal: String, newBatterName: String, isStrikerOut: Boolean) -> Unit
 ) {
     val commonDismissals = listOf("Bowled", "Caught", "LBW", "Run Out", "Stumped", "Hit Wicket")
     var selectedDismissal by remember { mutableStateOf("Caught") }
+    var isStrikerOut by remember { mutableStateOf(true) }
     var fielderBowlerDetail by remember { mutableStateOf("") }
     var newBatter by remember { mutableStateOf("") }
     var validationError by remember { mutableStateOf<String?>(null) }
 
+    val isAllOutWicket = currentWickets >= 9
     val cleanName = newBatter.trim()
-    val isDuplicate = cleanName.isNotEmpty() &&
+    val isDuplicate = !isAllOutWicket && cleanName.isNotEmpty() &&
         existingBatterNames.any { it.trim().equals(cleanName, ignoreCase = true) }
 
     AlertDialog(
@@ -82,7 +90,18 @@ fun WicketDialog(
                     }
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Record Wicket / Dismissal", fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                Column {
+                    Text(
+                        text = if (isAllOutWicket) "Record 10th Wicket (All Out)" else "Record Wicket / Dismissal",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp
+                    )
+                    Text(
+                        text = "Wicket #${currentWickets + 1} in this innings",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         },
         text = {
@@ -111,6 +130,33 @@ fun WicketDialog(
                     }
                 }
 
+                // If Run Out: allow selecting whether striker or non-striker was run out
+                if (selectedDismissal.equals("Run Out", ignoreCase = true)) {
+                    Text(
+                        text = "Who was Run Out?",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = isStrikerOut,
+                            onClick = { isStrikerOut = true },
+                            label = { Text("${strikerName.ifEmpty { "Striker" }} (Striker)", fontSize = 12.sp, fontWeight = FontWeight.Bold) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        FilterChip(
+                            selected = !isStrikerOut,
+                            onClick = { isStrikerOut = false },
+                            label = { Text("${nonStrikerName.ifEmpty { "Non-Striker" }} (Non-Striker)", fontSize = 12.sp, fontWeight = FontWeight.Bold) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
                 OutlinedTextField(
                     value = fielderBowlerDetail,
                     onValueChange = { fielderBowlerDetail = it },
@@ -121,34 +167,50 @@ fun WicketDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                OutlinedTextField(
-                    value = newBatter,
-                    onValueChange = {
-                        newBatter = it
-                        validationError = null
-                    },
-                    label = { Text("Next Batter Name") },
-                    placeholder = { Text("e.g. Next Batter") },
-                    singleLine = true,
-                    isError = isDuplicate || validationError != null,
-                    supportingText = {
-                        if (isDuplicate) {
-                            Text(
-                                text = "⚠️ '$cleanName' has already batted or is at crease in this innings",
-                                color = MaterialTheme.colorScheme.error,
-                                fontSize = 11.sp
-                            )
-                        } else if (validationError != null) {
-                            Text(
-                                text = validationError ?: "",
-                                color = MaterialTheme.colorScheme.error,
-                                fontSize = 11.sp
-                            )
-                        }
-                    },
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
+                if (isAllOutWicket) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = CricketWicketContainer.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "🎯 10th Wicket: Innings will be All Out. No next batter required.",
+                            color = CricketWicketRed,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(10.dp)
+                        )
+                    }
+                } else {
+                    OutlinedTextField(
+                        value = newBatter,
+                        onValueChange = {
+                            newBatter = it
+                            validationError = null
+                        },
+                        label = { Text("Next Batter Name") },
+                        placeholder = { Text("e.g. Next Batter") },
+                        singleLine = true,
+                        isError = isDuplicate || validationError != null,
+                        supportingText = {
+                            if (isDuplicate) {
+                                Text(
+                                    text = "⚠️ '$cleanName' has already batted or is at crease in this innings",
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 11.sp
+                                )
+                            } else if (validationError != null) {
+                                Text(
+                                    text = validationError ?: "",
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         },
         confirmButton = {
@@ -162,18 +224,151 @@ fun WicketDialog(
                         "${selectedDismissal.lowercase()} (${fielderBowlerDetail.trim()})"
                     else
                         selectedDismissal.lowercase()
-                    onConfirm(fullDismissal, cleanName)
+                    onConfirm(fullDismissal, cleanName, isStrikerOut)
                 },
                 enabled = !isDuplicate,
                 colors = ButtonDefaults.buttonColors(containerColor = CricketWicketRed),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Confirm Out", fontWeight = FontWeight.Bold)
+                Text(if (isAllOutWicket) "Confirm All Out" else "Confirm Out", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun ExtrasDialog(
+    onDismiss: () -> Unit,
+    onBye: (runs: Int) -> Unit,
+    onLegBye: (runs: Int) -> Unit,
+    onWide: (extraRuns: Int) -> Unit,
+    onNoBall: (runsOffBat: Int) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.SportsCricket,
+                    contentDescription = null,
+                    tint = CricketExtraAmber,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Record Extras (Cricket Laws)", fontWeight = FontWeight.Black, fontSize = 18.sp)
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                // 1. Byes (Law 23)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Byes (Runs without bat/body contact - Bowler not charged):",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(1, 2, 3, 4).forEach { runs ->
+                            OutlinedButton(
+                                onClick = { onBye(runs) },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("${runs}B", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+
+                // 2. Leg Byes (Law 24)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Leg Byes (Runs off batsman body - Bowler not charged):",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(1, 2, 3, 4).forEach { runs ->
+                            OutlinedButton(
+                                onClick = { onLegBye(runs) },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("${runs}Lb", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+
+                // 3. Wides with runs (Law 22)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Wide with extra runs / boundary:",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(1 to "+1 Wd", 2 to "+2 Wd", 3 to "+3 Wd", 5 to "+5 Wd (4byes)").forEach { (runs, label) ->
+                            OutlinedButton(
+                                onClick = { onWide(runs) },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(label, fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                            }
+                        }
+                    }
+                }
+
+                // 4. No Ball with runs off bat (Law 21)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "No Ball + Runs Scored off Bat (Free hit follows):",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        listOf(0 to "Nb+0", 1 to "Nb+1", 2 to "Nb+2", 4 to "Nb+4", 6 to "Nb+6").forEach { (runs, label) ->
+                            Button(
+                                onClick = { onNoBall(runs) },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (runs >= 4) CricketSixPurple else Color(0xFFEA580C)
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(label, fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
             }
         }
     )

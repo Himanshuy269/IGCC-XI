@@ -6,7 +6,9 @@ enum class BallType {
     NORMAL,
     WIDE,
     NO_BALL,
-    WICKET
+    WICKET,
+    BYE,
+    LEG_BYE
 }
 
 data class BallEvent(

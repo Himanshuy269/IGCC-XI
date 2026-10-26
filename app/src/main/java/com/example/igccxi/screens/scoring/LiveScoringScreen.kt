@@ -57,11 +57,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.igccxi.domain.PdfScorecardExporter
+import com.example.igccxi.domain.model.BallType
 import com.example.igccxi.domain.model.MatchStatus
 import com.example.igccxi.screens.scoring.components.BattersScoreCard
 import com.example.igccxi.screens.scoring.components.BowlerDialog
 import com.example.igccxi.screens.scoring.components.BowlerScoreCard
 import com.example.igccxi.screens.scoring.components.EditOversDialog
+import com.example.igccxi.screens.scoring.components.ExtrasDialog
 import com.example.igccxi.screens.scoring.components.RecentDeliveriesSection
 import com.example.igccxi.screens.scoring.components.ScoreBoardCard
 import com.example.igccxi.screens.scoring.components.ScoringKeypad
@@ -172,6 +174,29 @@ fun LiveScoringScreen(
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                // Free Hit Alert Banner (MCC Law: Free Hit follows No-Ball)
+                val isFreeHit = match.isScorable && innings.recentBalls.lastOrNull()?.type == BallType.NO_BALL
+                if (isFreeHit) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFDC2626),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = "🎯 FREE HIT NEXT BALL! (Cannot be out Bowled/Caught/LBW)",
+                                color = Color.White,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+
                 // 1. Stadium Score Card
                 ScoreBoardCard(
                     match = match,
@@ -204,6 +229,7 @@ fun LiveScoringScreen(
                         onRuns = { runs -> viewModel.recordRuns(runs) },
                         onWide = { viewModel.recordWide(1) },
                         onNoBall = { viewModel.recordNoBall(0) },
+                        onExtrasClick = { viewModel.showExtrasDialog() },
                         onWicketClick = { viewModel.showWicketDialog() },
                         onUndoClick = { viewModel.undoLastBall() },
                         onEndInningsClick = { showEndInningsConfirmDialog = true },
@@ -349,10 +375,23 @@ fun LiveScoringScreen(
             if (uiState.showWicketDialog) {
                 WicketDialog(
                     existingBatterNames = innings.batters.map { it.name }.filter { it.isNotBlank() },
+                    strikerName = striker?.name ?: "Striker",
+                    nonStrikerName = nonStriker?.name ?: "Non-Striker",
+                    currentWickets = innings.wickets,
                     onDismiss = { viewModel.dismissWicketDialog() },
-                    onConfirm = { dismissal, newBatter ->
-                        viewModel.recordWicket(dismissal, newBatter)
+                    onConfirm = { dismissal, newBatter, isStrikerOut ->
+                        viewModel.recordWicket(dismissal, newBatter, isStrikerOut)
                     }
+                )
+            }
+
+            if (uiState.showExtrasDialog) {
+                ExtrasDialog(
+                    onDismiss = { viewModel.dismissExtrasDialog() },
+                    onBye = { runs -> viewModel.recordBye(runs) },
+                    onLegBye = { runs -> viewModel.recordLegBye(runs) },
+                    onWide = { extraRuns -> viewModel.recordWide(extraRuns) },
+                    onNoBall = { runsOffBat -> viewModel.recordNoBall(runsOffBat) }
                 )
             }
 
