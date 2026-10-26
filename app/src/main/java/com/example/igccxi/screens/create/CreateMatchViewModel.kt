@@ -97,6 +97,53 @@ class CreateMatchViewModel @JvmOverloads constructor(
         )
     }
 
+    fun onPresetPlayersSelected(players: Int) = _uiState.update {
+        it.copy(
+            playersPerTeam = players,
+            customPlayersText = players.toString(),
+            isCustomPlayersSelected = false,
+            errorMessage = null
+        )
+    }
+
+    fun onCustomPlayersSelected() = _uiState.update {
+        it.copy(
+            isCustomPlayersSelected = true,
+            customPlayersText = it.playersPerTeam.toString()
+        )
+    }
+
+    fun onCustomPlayersTextChange(text: String) {
+        val filtered = text.filter { it.isDigit() }.take(2)
+        val parsed = filtered.toIntOrNull()
+        _uiState.update {
+            it.copy(
+                customPlayersText = filtered,
+                playersPerTeam = parsed?.coerceIn(2, 30) ?: it.playersPerTeam,
+                isCustomPlayersSelected = true,
+                errorMessage = null
+            )
+        }
+    }
+
+    fun incrementPlayers() = _uiState.update {
+        val next = (it.playersPerTeam + 1).coerceAtMost(30)
+        it.copy(
+            playersPerTeam = next,
+            customPlayersText = next.toString(),
+            isCustomPlayersSelected = true
+        )
+    }
+
+    fun decrementPlayers() = _uiState.update {
+        val prev = (it.playersPerTeam - 1).coerceAtLeast(2)
+        it.copy(
+            playersPerTeam = prev,
+            customPlayersText = prev.toString(),
+            isCustomPlayersSelected = true
+        )
+    }
+
     fun setTossWinnerIsTeamA(isTeamA: Boolean) = _uiState.update { it.copy(isTeamAWonToss = isTeamA) }
     fun onTossWinnerChange(isTeamA: Boolean) = _uiState.update { it.copy(isTeamAWonToss = isTeamA) }
     fun onTossDecisionChange(decision: String) = _uiState.update { it.copy(tossDecision = decision) }
@@ -138,6 +185,17 @@ class CreateMatchViewModel @JvmOverloads constructor(
             return
         }
 
+        val effectivePlayers = if (state.isCustomPlayersSelected) {
+            state.customPlayersText.toIntOrNull() ?: state.playersPerTeam
+        } else {
+            state.playersPerTeam
+        }
+
+        if (effectivePlayers < 2 || effectivePlayers > 30) {
+            _uiState.update { it.copy(errorMessage = "Please enter valid number of players per team (2 to 30)") }
+            return
+        }
+
         viewModelScope.launch {
             _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
             try {
@@ -147,6 +205,7 @@ class CreateMatchViewModel @JvmOverloads constructor(
                     teamB = teamB,
                     date = state.date.trim(),
                     totalOvers = effectiveOvers,
+                    playersPerTeam = effectivePlayers,
                     tossWinner = actualTossWinner,
                     tossDecision = state.tossDecision
                 )

@@ -301,7 +301,7 @@ object ScoringEngine {
         }
 
         val nextWickets = current.wickets + 1
-        val isAllOut = nextWickets >= 10
+        val isAllOut = nextWickets >= match.maxWickets
 
         var battersList = current.batters.map {
             when (it.id) {
@@ -671,7 +671,7 @@ object ScoringEngine {
         if (isSecondInnings && target != null) {
             // Check if chasing team chased down target
             if (updatedInnings.totalRuns >= target) {
-                val wicketsRemaining = 10 - updatedInnings.wickets
+                val wicketsRemaining = match.maxWickets - updatedInnings.wickets
                 val wText = if (wicketsRemaining == 1) "1 wicket" else "$wicketsRemaining wickets"
                 val result = "${updatedInnings.battingTeam} won by $wText"
                 return match.copy(
@@ -684,7 +684,7 @@ object ScoringEngine {
 
         // Check if overs completed or all out
         val isOversFinished = updatedInnings.oversBowled >= match.totalOvers
-        val isAllOut = updatedInnings.wickets >= 10
+        val isAllOut = updatedInnings.wickets >= match.maxWickets
 
         if (isOversFinished || isAllOut) {
             if (!isSecondInnings) {
@@ -722,7 +722,7 @@ object ScoringEngine {
 
         return when {
             inn2.totalRuns > inn1.totalRuns -> {
-                val wicketsLeft = 10 - inn2.wickets
+                val wicketsLeft = match.maxWickets - inn2.wickets
                 val wText = if (wicketsLeft == 1) "1 wicket" else "$wicketsLeft wickets"
                 "${inn2.battingTeam} won by $wText"
             }

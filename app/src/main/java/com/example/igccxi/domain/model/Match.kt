@@ -113,6 +113,7 @@ data class Match(
     val teamB: String = "",
     val date: String = "", // Format: "YYYY-MM-DD" for easy filtering
     val totalOvers: Int = 20,
+    val playersPerTeam: Int = 11,
     val status: MatchStatus = MatchStatus.NOT_STARTED,
     val scorerId: String = "",
     val currentInningsNumber: Int = 1,
@@ -124,6 +125,9 @@ data class Match(
     val tossDecision: String = "bat", // "bat" or "bowl"
     val createdAt: Long = System.currentTimeMillis()
 ) {
+    val maxWickets: Int
+        get() = maxOf(1, playersPerTeam - 1)
+
     val isScorable: Boolean
         get() = status == MatchStatus.INNINGS_1 || status == MatchStatus.INNINGS_2
 

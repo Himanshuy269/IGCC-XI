@@ -2,7 +2,7 @@ package com.example.igccxi.domain.usecase
 
 import com.example.igccxi.data.repository.InMemoryPresenceRepository
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -10,7 +10,7 @@ import org.junit.Test
 class ObserveActiveUsersUseCaseTest {
 
     @Test
-    fun observeActiveUsers_emitsAtLeastOneUser() = runTest {
+    fun observeActiveUsers_emitsAtLeastOneUser() = runBlocking {
         val repository = InMemoryPresenceRepository()
         val useCase = ObserveActiveUsersUseCase(repository)
 
@@ -20,7 +20,7 @@ class ObserveActiveUsersUseCaseTest {
     }
 
     @Test
-    fun recordHeartbeat_handlesUserIdGracefully() = runTest {
+    fun recordHeartbeat_handlesUserIdGracefully() = runBlocking {
         val repository = InMemoryPresenceRepository()
         val useCase = ObserveActiveUsersUseCase(repository)
 

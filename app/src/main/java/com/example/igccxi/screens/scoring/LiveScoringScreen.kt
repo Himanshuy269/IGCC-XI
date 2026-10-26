@@ -378,6 +378,7 @@ fun LiveScoringScreen(
                     strikerName = striker?.name ?: "Striker",
                     nonStrikerName = nonStriker?.name ?: "Non-Striker",
                     currentWickets = innings.wickets,
+                    maxWickets = match.maxWickets,
                     onDismiss = { viewModel.dismissWicketDialog() },
                     onConfirm = { dismissal, newBatter, isStrikerOut ->
                         viewModel.recordWicket(dismissal, newBatter, isStrikerOut)

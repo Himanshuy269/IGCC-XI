@@ -294,6 +294,135 @@ fun CreateMatchScreen(
             }
 
             // -------------------------------------------------------------
+            // Section 2B: Players Per Side Card
+            // -------------------------------------------------------------
+            ElevatedCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "PLAYERS PER SIDE",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary,
+                            letterSpacing = 0.8.sp
+                        )
+
+                        val displayPlayers = if (uiState.isCustomPlayersSelected) {
+                            uiState.customPlayersText.ifEmpty { "0" }
+                        } else {
+                            uiState.playersPerTeam.toString()
+                        }
+                        val maxW = maxOf(1, (displayPlayers.toIntOrNull() ?: 11) - 1)
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer
+                        ) {
+                            Text(
+                                text = "$displayPlayers Players • Max $maxW Wickets",
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Preset Chips Row: 5, 6, 7, 8, 11, Custom
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(5, 6, 7, 8, 11).forEach { count ->
+                            FilterChip(
+                                selected = !uiState.isCustomPlayersSelected && uiState.playersPerTeam == count,
+                                onClick = { viewModel.onPresetPlayersSelected(count) },
+                                label = { Text("${count}s", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                ),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        FilterChip(
+                            selected = uiState.isCustomPlayersSelected,
+                            onClick = { viewModel.onCustomPlayersSelected() },
+                            label = { Text("Custom", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            ),
+                            modifier = Modifier.weight(1.1f)
+                        )
+                    }
+
+                    if (uiState.isCustomPlayersSelected) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                                .padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Team size (2-30):",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                FilledTonalIconButton(
+                                    onClick = { viewModel.decrementPlayers() },
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(Icons.Default.Remove, contentDescription = "Decrease", modifier = Modifier.size(16.dp))
+                                }
+
+                                OutlinedTextField(
+                                    value = uiState.customPlayersText,
+                                    onValueChange = { viewModel.onCustomPlayersTextChange(it) },
+                                    modifier = Modifier.width(64.dp),
+                                    textStyle = TextStyle(
+                                        textAlign = TextAlign.Center,
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 17.sp
+                                    ),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+
+                                FilledTonalIconButton(
+                                    onClick = { viewModel.incrementPlayers() },
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = "Increase", modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // -------------------------------------------------------------
             // Section 3: Toss & Decision Card
             // -------------------------------------------------------------
             ElevatedCard(

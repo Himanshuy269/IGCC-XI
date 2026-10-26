@@ -83,7 +83,8 @@ object PdfScorecardExporter {
         paint.textSize = 10f
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
         paint.color = Color.parseColor("#616161")
-        canvas.drawText("Date: ${match.date}  |  Overs: ${match.totalOvers} ov", 40f, y + 42f, paint)
+        val sideText = if (match.playersPerTeam != 11) "  |  ${match.playersPerTeam} players/side (${match.maxWickets} wkts)" else ""
+        canvas.drawText("Date: ${match.date}  |  Overs: ${match.totalOvers} ov$sideText", 40f, y + 42f, paint)
 
         val tossInfo = if (match.tossWinner.isNotEmpty()) "Toss: ${match.tossWinner} opted to ${match.tossDecision}" else ""
         val resultInfo = if (match.result.isNotEmpty()) "Result: ${match.result}" else "Match In Progress"

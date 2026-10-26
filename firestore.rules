@@ -13,6 +13,7 @@ rules_version = '2';
 //   - teamB: string (required, 1-100 chars) - Name of Team B
 //   - date: string (required, 4-30 chars, format: YYYY-MM-DD)
 //   - totalOvers: number (required, integer between 1 and 150)
+//   - playersPerTeam: number (optional/nullable, integer between 2 and 50 inclusive, defaults to 11 if omitted)
 //   - status: string (required, enum: NOT_STARTED, INNINGS_1, INNINGS_BREAK, INNINGS_2, COMPLETED)
 //   - scorerId: string (required, 0-128 chars, Firebase Auth UID of scorer)
 //   - currentInningsNumber: number (required, 1 or 2)
@@ -27,6 +28,7 @@ rules_version = '2';
 // Allowed Optional Serialization Helper Getters:
 //   - currentInnings: map (optional getter serialization)
 //   - isScorable / scorable: bool (optional getter serialization)
+//   - maxWickets: number (optional getter serialization, integer between 1 and 49)
 //
 // ---------------------------------------------------------------
 //
@@ -77,7 +79,8 @@ service cloud.firestore {
         'id', 'teamA', 'teamB', 'date', 'totalOvers', 'status',
         'scorerId', 'currentInningsNumber', 'innings1', 'innings2',
         'target', 'result', 'tossWinner', 'tossDecision', 'createdAt',
-        'currentInnings', 'isScorable', 'scorable'
+        'currentInnings', 'isScorable', 'scorable',
+        'playersPerTeam', 'maxWickets'
       ]);
     }
 
@@ -87,7 +90,7 @@ service cloud.firestore {
         inningsData.battingTeam is string && inningsData.battingTeam.size() <= 100 &&
         inningsData.bowlingTeam is string && inningsData.bowlingTeam.size() <= 100 &&
         inningsData.totalRuns is number && inningsData.totalRuns >= 0 &&
-        inningsData.wickets is number && inningsData.wickets >= 0 && inningsData.wickets <= 11 &&
+        inningsData.wickets is number && inningsData.wickets >= 0 && inningsData.wickets <= 50 &&
         inningsData.oversBowled is number && inningsData.oversBowled >= 0 &&
         inningsData.ballsBowledInOver is number && inningsData.ballsBowledInOver >= 0 && inningsData.ballsBowledInOver <= 5 &&
         inningsData.batters is list && inningsData.batters.size() <= 30 &&
@@ -107,6 +110,8 @@ service cloud.firestore {
         data.teamB is string && data.teamB.size() > 0 && data.teamB.size() <= 100 &&
         data.date is string && data.date.size() >= 4 && data.date.size() <= 30 &&
         data.totalOvers is number && data.totalOvers >= 1 && data.totalOvers <= 150 &&
+        (!('playersPerTeam' in data) || data.playersPerTeam == null || (data.playersPerTeam is number && data.playersPerTeam >= 2 && data.playersPerTeam <= 50)) &&
+        (!('maxWickets' in data) || data.maxWickets == null || (data.maxWickets is number && data.maxWickets >= 1 && data.maxWickets <= 49)) &&
         data.status is string && data.status in ['NOT_STARTED', 'INNINGS_1', 'INNINGS_BREAK', 'INNINGS_2', 'COMPLETED'] &&
         data.scorerId is string && data.scorerId.size() <= 128 &&
         data.currentInningsNumber is number && (data.currentInningsNumber == 1 || data.currentInningsNumber == 2) &&

@@ -88,8 +88,9 @@ fun ScoreCardSummary(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     StatusBadge(status = match.status, isLive = isLive)
                     Spacer(modifier = Modifier.width(8.dp))
+                    val sideInfo = if (match.playersPerTeam != 11) " • ${match.playersPerTeam}s" else ""
                     Text(
-                        text = "${match.totalOvers} Ov • ${match.date}",
+                        text = "${match.totalOvers} Ov$sideInfo • ${match.date}",
                         style = MaterialTheme.typography.labelSmall,
                         color = if (isLive) Color.White.copy(alpha = 0.9f) else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.SemiBold

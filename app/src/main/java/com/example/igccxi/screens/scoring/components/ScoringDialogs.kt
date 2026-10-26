@@ -56,6 +56,7 @@ fun WicketDialog(
     strikerName: String = "",
     nonStrikerName: String = "",
     currentWickets: Int = 0,
+    maxWickets: Int = 10,
     onDismiss: () -> Unit,
     onConfirm: (dismissal: String, newBatterName: String, isStrikerOut: Boolean) -> Unit
 ) {
@@ -66,7 +67,7 @@ fun WicketDialog(
     var newBatter by remember { mutableStateOf("") }
     var validationError by remember { mutableStateOf<String?>(null) }
 
-    val isAllOutWicket = currentWickets >= 9
+    val isAllOutWicket = currentWickets >= (maxWickets - 1)
     val cleanName = newBatter.trim()
     val isDuplicate = !isAllOutWicket && cleanName.isNotEmpty() &&
         existingBatterNames.any { it.trim().equals(cleanName, ignoreCase = true) }
@@ -92,12 +93,12 @@ fun WicketDialog(
                 Spacer(modifier = Modifier.width(8.dp))
                 Column {
                     Text(
-                        text = if (isAllOutWicket) "Record 10th Wicket (All Out)" else "Record Wicket / Dismissal",
+                        text = if (isAllOutWicket) "Record Final Wicket (All Out)" else "Record Wicket / Dismissal",
                         fontWeight = FontWeight.Bold,
                         fontSize = 17.sp
                     )
                     Text(
-                        text = "Wicket #${currentWickets + 1} in this innings",
+                        text = "Wicket #${currentWickets + 1} of $maxWickets in this innings",
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -174,7 +175,7 @@ fun WicketDialog(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "🎯 10th Wicket: Innings will be All Out. No next batter required.",
+                            text = "🎯 Final Wicket: Innings will be All Out ($maxWickets wickets down). No next batter required.",
                             color = CricketWicketRed,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,

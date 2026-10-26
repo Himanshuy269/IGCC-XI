@@ -376,4 +376,63 @@ class ScoringEngineTest {
         val resRun = ScoringEngine.calculateFinalResult(m2)
         assertEquals("India won by 1 run", resRun)
     }
+
+    @Test
+    fun testCustomPlayersPerTeam_5Players_allOutAt4Wickets() {
+        val initialMatch = Match(
+            teamA = "Team 5A",
+            teamB = "Team 5B",
+            totalOvers = 10,
+            playersPerTeam = 5,
+            tossWinner = "Team 5A",
+            tossDecision = "bat"
+        )
+        assertEquals(5, initialMatch.playersPerTeam)
+        assertEquals(4, initialMatch.maxWickets)
+
+        var cur = ScoringEngine.startMatch(
+            match = initialMatch,
+            strikerName = "P1",
+            nonStrikerName = "P2",
+            bowlerName = "B1"
+        )
+
+        // Record 3 wickets
+        cur = ScoringEngine.recordWicket(cur, "bowled", "P3", isStrikerOut = true)
+        assertEquals(1, cur.currentInnings.wickets)
+        assertFalse(cur.currentInnings.isCompleted)
+
+        cur = ScoringEngine.recordWicket(cur, "bowled", "P4", isStrikerOut = true)
+        assertEquals(2, cur.currentInnings.wickets)
+        assertFalse(cur.currentInnings.isCompleted)
+
+        cur = ScoringEngine.recordWicket(cur, "bowled", "P5", isStrikerOut = true)
+        assertEquals(3, cur.currentInnings.wickets)
+        assertFalse(cur.currentInnings.isCompleted)
+
+        // 4th wicket in 5-player game = ALL OUT
+        cur = ScoringEngine.recordWicket(cur, "bowled", null, isStrikerOut = true)
+        assertEquals(4, cur.innings1.wickets)
+        assertTrue(cur.innings1.isCompleted)
+        assertEquals(MatchStatus.INNINGS_BREAK, cur.status)
+        assertEquals(1, cur.target) // 0 runs scored + 1 = target 1
+    }
+
+    @Test
+    fun testCustomPlayersPerTeam_7Players_chaseVictoryByWickets() {
+        val match7 = Match(
+            teamA = "Team 7A",
+            teamB = "Team 7B",
+            totalOvers = 10,
+            playersPerTeam = 7,
+            currentInningsNumber = 2,
+            target = 50,
+            innings1 = Innings(totalRuns = 49, battingTeam = "Team 7A", isCompleted = true),
+            innings2 = Innings(totalRuns = 50, wickets = 2, battingTeam = "Team 7B")
+        )
+        assertEquals(6, match7.maxWickets)
+        val result = ScoringEngine.calculateFinalResult(match7)
+        // 6 max wickets - 2 wickets fallen = 4 wickets left
+        assertEquals("Team 7B won by 4 wickets", result)
+    }
 }

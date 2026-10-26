@@ -168,8 +168,9 @@ fun MatchDetailsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 StatusBadge(status = match.status, isLive = match.isScorable)
+                                val sideInfo = if (match.playersPerTeam != 11) " • ${match.playersPerTeam}s" else ""
                                 Text(
-                                    text = "${match.totalOvers} Overs • ${match.date}",
+                                    text = "${match.totalOvers} Overs$sideInfo • ${match.date}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Color.White.copy(alpha = 0.9f),
                                     fontWeight = FontWeight.Bold
