@@ -28,7 +28,11 @@ class InMemoryMatchRepository(
             if (file.exists() && file.length() > 0L) {
                 val json = file.readText()
                 val type = object : TypeToken<List<Match>>() {}.type
-                gson.fromJson<List<Match>>(json, type) ?: emptyList()
+                val loaded: List<Match> = gson.fromJson<List<Match>>(json, type) ?: emptyList()
+                loaded.filterNot { 
+                    it.id == "F2A7oeEcJkZ6ZS2z4aoF" || 
+                    (it.teamA.trim().equals("123", ignoreCase = true) && it.teamB.trim().equals("456", ignoreCase = true))
+                }
             } else {
                 emptyList()
             }

@@ -8,8 +8,8 @@ android {
     namespace = "com.example.igccxi"
     compileSdk = 37
 
-    val vCode = project.findProperty("versionCode")?.toString()?.toIntOrNull() ?: 10208
-    val vName = project.findProperty("versionName")?.toString() ?: "1.2.8"
+    val vCode = project.findProperty("versionCode")?.toString()?.toIntOrNull() ?: 10209
+    val vName = project.findProperty("versionName")?.toString() ?: "1.2.9"
 
     defaultConfig {
         applicationId = "com.example.igccxi"

@@ -134,4 +134,54 @@ class GetPlayerRankingsUseCaseTest {
         assertEquals("Bowler Alpha", rankings.bowlers[1].name)
         assertEquals(2, rankings.bowlers[1].rank)
     }
+
+    @Test
+    fun testTestMatchesFilterAllPlayersExceptKashishAndExclude123vs456() = runBlocking {
+        // Match 123 vs 456 (F2A7oeEcJkZ6ZS2z4aoF) - should be completely excluded
+        val inn123 = Innings(
+            inningsNumber = 1,
+            battingTeam = "123",
+            bowlingTeam = "456",
+            batters = listOf(
+                BatterScore(id = "b1", name = "virat", runs = 16, ballsFaced = 10, isOut = true),
+                BatterScore(id = "b2", name = "dhoni", runs = 67, ballsFaced = 30, isOut = true)
+            ),
+            bowlers = listOf(
+                BowlerScore(id = "bw1", name = "kashish", oversBowled = 1, ballsBowledInOver = 0, runsConceded = 10, wickets = 1)
+            )
+        )
+        val match123 = Match(id = "F2A7oeEcJkZ6ZS2z4aoF", teamA = "123", teamB = "456", status = MatchStatus.COMPLETED, innings1 = inn123)
+        repository.createMatch(match123)
+
+        // Another test match with dummy players and Kashish
+        val innTest = Innings(
+            inningsNumber = 1,
+            battingTeam = "hhn",
+            bowlingTeam = "hhbn",
+            batters = listOf(
+                BatterScore(id = "b3", name = "Striker 1", runs = 10, ballsFaced = 5, isOut = true),
+                BatterScore(id = "b4", name = "Ddhdf", runs = 40, ballsFaced = 20, isOut = true)
+            ),
+            bowlers = listOf(
+                BowlerScore(id = "bw2", name = "Kashish", oversBowled = 2, ballsBowledInOver = 0, runsConceded = 8, wickets = 4),
+                BowlerScore(id = "bw3", name = "Nishtha", oversBowled = 1, ballsBowledInOver = 0, runsConceded = 15, wickets = 2)
+            )
+        )
+        val matchTest = Match(id = "BqSQumBqWYACyUNqUejC", teamA = "hhn", teamB = "hhbn", status = MatchStatus.COMPLETED, innings1 = innTest)
+        repository.createMatch(matchTest)
+
+        val rankings = getPlayerRankingsUseCase().first()
+
+        // Match 123 vs 456 is excluded: virat and dhoni must NOT be present
+        assertTrue(rankings.batsmen.none { it.name.contains("Virat", ignoreCase = true) })
+        assertTrue(rankings.batsmen.none { it.name.contains("Dhoni", ignoreCase = true) })
+        // Dummy players from test match must be excluded
+        assertTrue(rankings.batsmen.none { it.name.contains("Striker", ignoreCase = true) })
+        assertTrue(rankings.batsmen.none { it.name.contains("Ddhdf", ignoreCase = true) })
+
+        // Bowlers: Only Kashish should remain (Nishtha must be excluded from test matches)
+        assertEquals(1, rankings.bowlers.size)
+        assertEquals("Kashish", rankings.bowlers[0].name)
+        assertEquals(4, rankings.bowlers[0].wickets)
+    }
 }

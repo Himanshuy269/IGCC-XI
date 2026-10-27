@@ -17,6 +17,37 @@ import java.util.Locale
 class GetPlayerRankingsUseCase(
     private val repository: MatchRepository
 ) {
+    companion object {
+        // Known test matches from early app testing
+        private val TEST_MATCH_IDS = setOf(
+            "F2A7oeEcJkZ6ZS2z4aoF", // 123 vs 456
+            "BqSQumBqWYACyUNqUejC",
+            "ByHqjCGGs6PIMoAJeMM8",
+            "bas5xgJbDcttspMMANS6",
+            "bs6wIYJzSaCKcbe2x0gt",
+            "l2g2C6DZc4nkbqcqM2h2",
+            "sRS9jGq0kh6jZpETkHTO",
+            "zWfTJTNutdURFHKEmrjh"
+        )
+    }
+
+    private fun isEligiblePlayer(name: String, match: Match): Boolean {
+        val clean = name.trim().lowercase(Locale.ROOT)
+        if (clean.isEmpty()) return false
+
+        // Kashish is explicitly preserved
+        if (clean == "kashish") return true
+
+        // For all test matches, remove all players except Kashish
+        if (match.id in TEST_MATCH_IDS ||
+            (match.teamA.trim().equals("123", ignoreCase = true) && match.teamB.trim().equals("456", ignoreCase = true))
+        ) {
+            return false
+        }
+
+        return true
+    }
+
     operator fun invoke(): Flow<RankingsData> {
         return repository.observeMatches().map { matches ->
             calculateRankings(matches)
@@ -27,9 +58,15 @@ class GetPlayerRankingsUseCase(
         val battingMap = mutableMapOf<String, MutableBattingStats>()
         val bowlingMap = mutableMapOf<String, MutableBowlingStats>()
 
+        // Exclude match "123 vs 456"
+        val eligibleMatches = matches.filterNot {
+            it.id == "F2A7oeEcJkZ6ZS2z4aoF" ||
+            (it.teamA.trim().equals("123", ignoreCase = true) && it.teamB.trim().equals("456", ignoreCase = true))
+        }
+
         var matchesAnalyzed = 0
 
-        for (match in matches) {
+        for (match in eligibleMatches) {
             val inningsList = listOfNotNull(match.innings1, match.innings2)
             if (inningsList.isNotEmpty()) {
                 matchesAnalyzed++
@@ -39,7 +76,7 @@ class GetPlayerRankingsUseCase(
                 // 1. Process Batters in this innings
                 for (batter in innings.batters) {
                     val rawName = batter.name.trim()
-                    if (rawName.isEmpty()) continue
+                    if (rawName.isEmpty() || !isEligiblePlayer(rawName, match)) continue
 
                     val key = rawName.lowercase(Locale.ROOT)
                     val stats = battingMap.getOrPut(key) {
@@ -72,7 +109,7 @@ class GetPlayerRankingsUseCase(
                 // 2. Process Bowlers in this innings
                 for (bowler in innings.bowlers) {
                     val rawName = bowler.name.trim()
-                    if (rawName.isEmpty()) continue
+                    if (rawName.isEmpty() || !isEligiblePlayer(rawName, match)) continue
 
                     val balls = bowler.totalBalls
                     // Only count spells where bowler actually bowled or conceded/took wickets

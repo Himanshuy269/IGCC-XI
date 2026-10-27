@@ -30,6 +30,15 @@ class FirestoreMatchRepository(
 
     private val matchesCollection = firestore.collection("matches")
 
+    companion object {
+        private const val PURGED_MATCH_ID = "F2A7oeEcJkZ6ZS2z4aoF"
+    }
+
+    private fun isPurgedMatch(id: String, teamA: String, teamB: String): Boolean {
+        return id == PURGED_MATCH_ID ||
+                (teamA.trim().equals("123", ignoreCase = true) && teamB.trim().equals("456", ignoreCase = true))
+    }
+
     override fun observeMatches(): Flow<List<Match>> = callbackFlow {
         val listenerRegistration = matchesCollection
             .orderBy("createdAt", Query.Direction.DESCENDING)
@@ -39,8 +48,15 @@ class FirestoreMatchRepository(
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
+                    val uid = auth.currentUser?.uid ?: ""
                     val matches = snapshot.documents.mapNotNull { doc ->
                         doc.toObject(Match::class.java)?.copy(id = doc.id)
+                    }.filterNot { match ->
+                        val shouldPurge = isPurgedMatch(match.id, match.teamA, match.teamB)
+                        if (shouldPurge && uid.isNotEmpty() && (match.scorerId == uid || match.scorerId.isEmpty())) {
+                            matchesCollection.document(match.id).delete()
+                        }
+                        shouldPurge
                     }
                     trySend(matches)
                 }
@@ -49,6 +65,11 @@ class FirestoreMatchRepository(
     }
 
     override fun observeMatch(matchId: String): Flow<Match?> = callbackFlow {
+        if (matchId == PURGED_MATCH_ID) {
+            trySend(null)
+            awaitClose { }
+            return@callbackFlow
+        }
         val listenerRegistration = matchesCollection.document(matchId)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -57,7 +78,11 @@ class FirestoreMatchRepository(
                 }
                 if (snapshot != null && snapshot.exists()) {
                     val match = snapshot.toObject(Match::class.java)?.copy(id = snapshot.id)
-                    trySend(match)
+                    if (match != null && isPurgedMatch(match.id, match.teamA, match.teamB)) {
+                        trySend(null)
+                    } else {
+                        trySend(match)
+                    }
                 } else {
                     trySend(null)
                 }
