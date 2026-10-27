@@ -60,6 +60,9 @@ object RepositoryProvider {
     fun provideUpdateMatchUseCase(context: Context): UpdateMatchUseCase =
         UpdateMatchUseCase(getRepository(context))
 
+    fun provideDeleteMatchUseCase(context: Context): com.example.igccxi.domain.usecase.DeleteMatchUseCase =
+        com.example.igccxi.domain.usecase.DeleteMatchUseCase(getRepository(context))
+
     fun provideGetCurrentUserIdUseCase(context: Context): GetCurrentUserIdUseCase =
         GetCurrentUserIdUseCase(getRepository(context))
 

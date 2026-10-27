@@ -74,5 +74,12 @@ class InMemoryMatchRepository(
         persistMatches(updatedList)
     }
 
+    override suspend fun deleteMatch(matchId: String) {
+        val currentList = _matchesFlow.value
+        val updatedList = currentList.filterNot { it.id == matchId }
+        _matchesFlow.value = updatedList
+        persistMatches(updatedList)
+    }
+
     override suspend fun getCurrentUserId(): String = localUserId
 }

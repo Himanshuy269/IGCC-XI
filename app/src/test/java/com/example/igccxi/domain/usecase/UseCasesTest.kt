@@ -32,6 +32,10 @@ class FakeMatchRepository : MatchRepository {
         matches.value = matches.value.map { if (it.id == match.id) match else it }
     }
 
+    override suspend fun deleteMatch(matchId: String) {
+        matches.value = matches.value.filterNot { it.id == matchId }
+    }
+
     override suspend fun getCurrentUserId(): String = "test_user_123"
 }
 
@@ -42,6 +46,7 @@ class UseCasesTest {
     private lateinit var getMatchByIdUseCase: GetMatchByIdUseCase
     private lateinit var createMatchUseCase: CreateMatchUseCase
     private lateinit var updateMatchUseCase: UpdateMatchUseCase
+    private lateinit var deleteMatchUseCase: DeleteMatchUseCase
     private lateinit var getCurrentUserIdUseCase: GetCurrentUserIdUseCase
 
     @Before
@@ -51,6 +56,7 @@ class UseCasesTest {
         getMatchByIdUseCase = GetMatchByIdUseCase(repository)
         createMatchUseCase = CreateMatchUseCase(repository)
         updateMatchUseCase = UpdateMatchUseCase(repository)
+        deleteMatchUseCase = DeleteMatchUseCase(repository)
         getCurrentUserIdUseCase = GetCurrentUserIdUseCase(repository)
     }
 
@@ -80,6 +86,20 @@ class UseCasesTest {
         val fetched = getMatchByIdUseCase("m1").first()
         assertEquals(MatchStatus.COMPLETED, fetched?.status)
         assertEquals("Team 1 won", fetched?.result)
+    }
+
+    @Test
+    fun testDeleteMatch() = runBlocking {
+        val match = Match(id = "m1", teamA = "Team 1", teamB = "Team 2", status = MatchStatus.INNINGS_1)
+        createMatchUseCase(match)
+
+        var allMatches = getMatchesUseCase().first()
+        assertEquals(1, allMatches.size)
+
+        deleteMatchUseCase("m1")
+
+        allMatches = getMatchesUseCase().first()
+        assertEquals(0, allMatches.size)
     }
 
     @Test

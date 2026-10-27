@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -80,6 +81,38 @@ fun MatchHistoryScreen(
     val uiState by viewModel.uiState.collectAsState()
     val dateScrollState = rememberScrollState()
     var showDatePicker by remember { mutableStateOf(false) }
+    var matchPendingDelete by remember { mutableStateOf<com.example.igccxi.domain.model.Match?>(null) }
+
+    if (matchPendingDelete != null) {
+        AlertDialog(
+            onDismissRequest = { matchPendingDelete = null },
+            title = { Text("Delete Match?", fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "Are you sure you want to permanently delete the match '${matchPendingDelete?.teamA} vs ${matchPendingDelete?.teamB}'? This action cannot be undone and will update rankings."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val id = matchPendingDelete?.id
+                        matchPendingDelete = null
+                        if (!id.isNullOrEmpty()) {
+                            viewModel.deleteMatch(id)
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { matchPendingDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     // Material 3 Date Picker Dialog
     if (showDatePicker) {
@@ -511,7 +544,10 @@ fun MatchHistoryScreen(
                                 } else {
                                     onNavigateToDetails(match.id)
                                 }
-                            }
+                            },
+                            onDelete = if (match.scorerId == uiState.currentUserId && uiState.currentUserId.isNotEmpty()) {
+                                { matchPendingDelete = match }
+                            } else null
                         )
                     }
                 }

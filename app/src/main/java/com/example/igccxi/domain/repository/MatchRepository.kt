@@ -29,6 +29,11 @@ interface MatchRepository {
     suspend fun updateMatch(match: Match)
 
     /**
+     * Deletes a match and its live scorecard from the persistent store.
+     */
+    suspend fun deleteMatch(matchId: String)
+
+    /**
      * Retrieves the current user's unique identifier for scorer ownership checks.
      */
     suspend fun getCurrentUserId(): String

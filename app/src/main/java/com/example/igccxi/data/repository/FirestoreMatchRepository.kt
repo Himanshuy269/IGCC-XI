@@ -87,6 +87,11 @@ class FirestoreMatchRepository(
         matchesCollection.document(match.id).set(match).await()
     }
 
+    override suspend fun deleteMatch(matchId: String) {
+        if (matchId.isEmpty()) return
+        matchesCollection.document(matchId).delete().await()
+    }
+
     override suspend fun getCurrentUserId(): String {
         val currentUser = auth.currentUser
         return if (currentUser != null) {

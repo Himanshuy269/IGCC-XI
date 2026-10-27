@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.igccxi.data.repository.RepositoryProvider
 import com.example.igccxi.domain.model.MatchStatus
+import com.example.igccxi.domain.usecase.DeleteMatchUseCase
 import com.example.igccxi.domain.usecase.GetCurrentUserIdUseCase
 import com.example.igccxi.domain.usecase.GetMatchesUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,7 +22,8 @@ import java.util.Locale
 class MatchHistoryViewModel @JvmOverloads constructor(
     application: Application,
     private val getMatchesUseCase: GetMatchesUseCase = RepositoryProvider.provideGetMatchesUseCase(application),
-    private val getCurrentUserIdUseCase: GetCurrentUserIdUseCase = RepositoryProvider.provideGetCurrentUserIdUseCase(application)
+    private val getCurrentUserIdUseCase: GetCurrentUserIdUseCase = RepositoryProvider.provideGetCurrentUserIdUseCase(application),
+    private val deleteMatchUseCase: DeleteMatchUseCase = RepositoryProvider.provideDeleteMatchUseCase(application)
 ) : AndroidViewModel(application) {
 
     private val _selectedDate = MutableStateFlow("")
@@ -121,5 +123,14 @@ class MatchHistoryViewModel @JvmOverloads constructor(
         _selectedDate.value = ""
         _searchQuery.value = ""
         _statusFilter.value = ScorecardFilter.ALL
+    }
+
+    fun deleteMatch(matchId: String) {
+        viewModelScope.launch {
+            try {
+                deleteMatchUseCase(matchId)
+            } catch (_: Exception) {
+            }
+        }
     }
 }

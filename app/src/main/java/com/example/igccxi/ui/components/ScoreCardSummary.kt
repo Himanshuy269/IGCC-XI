@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -50,7 +51,8 @@ import com.example.igccxi.ui.theme.CricketSuccessGreen
 fun ScoreCardSummary(
     match: Match,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDelete: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val isLive = match.status == MatchStatus.INNINGS_1 || match.status == MatchStatus.INNINGS_2
@@ -184,6 +186,21 @@ fun ScoreCardSummary(
                     )
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (onDelete != null) {
+                            IconButton(
+                                onClick = onDelete,
+                                modifier = Modifier.size(30.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DeleteOutline,
+                                    contentDescription = "Delete Match",
+                                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(17.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(2.dp))
+                        }
+
                         // PDF Quick Action
                         IconButton(
                             onClick = { PdfScorecardExporter.generateAndSharePdf(context, match) },
