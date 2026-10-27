@@ -1,10 +1,10 @@
 {
-  "latestVersionCode": 10207,
-  "latestVersionName": "1.2.7",
-  "releaseNotes": "Release v1.2.7 automatically published via GitHub Actions.",
-  "downloadUrl": "https://github.com/Himanshuy269/IGCC-XI/releases/download/v1.2.7/IGCC-XI.apk",
+  "latestVersionCode": 10208,
+  "latestVersionName": "1.2.8",
+  "releaseNotes": "Release v1.2.8 automatically published via GitHub Actions.",
+  "downloadUrl": "https://github.com/Himanshuy269/IGCC-XI/releases/download/v1.2.8/IGCC-XI.apk",
   "isMandatory": false,
   "minSupportedVersionCode": 1,
-  "fileSizeBytes": 18373510,
+  "fileSizeBytes": 18373499,
   "releaseDate": "2026-10-27"
 }
