@@ -1,10 +1,10 @@
 {
   "latestVersionCode": 10207,
   "latestVersionName": "1.2.7",
-  "releaseNotes": "• 3-Tab Bottom Navigation: Seamless switching between Home, Scorecards, and Player Rankings\n• Redesigned Home Screen Dashboard: Clean cricket central with live match hero card, club statistics, latest result spotlight, and quick actions\n• Dedicated Scorecards Screen: Search by team or match ID, filter by status (All, Live, Finished) and date calendar\n• Gully Cricket Rules (X Players = X Wickets): Each team gets full X wickets. When X-1 wickets fall, the lone batsman continues batting alone until all-out\n• Lone Batsman Live Scoring: Ball-by-ball strike retention and live visual indicator during lone batsman innings\n• Real-time Active Users live presence badge\n• In-app auto-update with direct APK installation",
+  "releaseNotes": "Release v1.2.7 automatically published via GitHub Actions.",
   "downloadUrl": "https://github.com/Himanshuy269/IGCC-XI/releases/download/v1.2.7/IGCC-XI.apk",
   "isMandatory": false,
   "minSupportedVersionCode": 1,
-  "fileSizeBytes": 18350000,
+  "fileSizeBytes": 18373510,
   "releaseDate": "2026-10-27"
 }
