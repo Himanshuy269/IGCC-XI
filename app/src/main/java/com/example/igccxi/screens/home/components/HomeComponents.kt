@@ -1122,8 +1122,8 @@ fun CricketRulesFeaturesCard() {
 
             FeatureBullet(
                 icon = Icons.Default.People,
-                title = "Custom Players (5 to 11)",
-                description = "Play 5v5, 6v6, 7v7, 8v8 or 11v11 per side. All-out wickets adapt automatically."
+                title = "Gully Cricket Rules (X Players = X Wickets)",
+                description = "Each team gets full X wickets. When X-1 wickets fall, the lone batsman continues batting alone until all-out."
             )
 
             Spacer(modifier = Modifier.height(10.dp))

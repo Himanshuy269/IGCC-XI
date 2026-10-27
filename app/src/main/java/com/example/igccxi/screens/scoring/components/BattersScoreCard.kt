@@ -44,6 +44,8 @@ fun BattersScoreCard(
     nonStriker: BatterScore?,
     onSwapStrike: () -> Unit
 ) {
+    val isLoneBatsman = nonStriker == null || nonStriker.id.isBlank()
+
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -60,35 +62,55 @@ fun BattersScoreCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "BATTERS AT CREASE",
+                    text = if (isLoneBatsman) "BATTER AT CREASE (LONE)" else "BATTERS AT CREASE",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.primary,
                     letterSpacing = 0.8.sp
                 )
 
-                Surface(
-                    onClick = onSwapStrike,
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                if (!isLoneBatsman) {
+                    Surface(
+                        onClick = onSwapStrike,
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.SwapHoriz,
-                            contentDescription = "Swap Strike",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(15.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Swap Strike",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.SwapHoriz,
+                                contentDescription = "Swap Strike",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Swap Strike",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                } else {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = CricketGreenPrimary.copy(alpha = 0.15f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, CricketGreenPrimary.copy(alpha = 0.5f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "⚡ Batting Alone",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = CricketGreenPrimary
+                            )
+                        }
                     }
                 }
             }
@@ -157,7 +179,7 @@ fun BattersScoreCard(
 
             // Striker Row (Highlighted with On-Strike indicator)
             BatterTableRow(
-                name = striker?.name ?: "Striker",
+                name = if (isLoneBatsman) "${striker?.name ?: "Striker"} (Lone)" else (striker?.name ?: "Striker"),
                 runs = striker?.runs ?: 0,
                 balls = striker?.ballsFaced ?: 0,
                 fours = striker?.fours ?: 0,
@@ -168,16 +190,36 @@ fun BattersScoreCard(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Non-Striker Row
-            BatterTableRow(
-                name = nonStriker?.name ?: "Non-Striker",
-                runs = nonStriker?.runs ?: 0,
-                balls = nonStriker?.ballsFaced ?: 0,
-                fours = nonStriker?.fours ?: 0,
-                sixes = nonStriker?.sixes ?: 0,
-                strikeRate = nonStriker?.strikeRateFormatted ?: "0.0",
-                isOnStrike = false
-            )
+            // Non-Striker Row or Lone Batsman Notice
+            if (isLoneBatsman) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "⚡ Gully Cricket Rule: Batsman is batting alone (faces every ball).",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
+                BatterTableRow(
+                    name = nonStriker?.name ?: "Non-Striker",
+                    runs = nonStriker?.runs ?: 0,
+                    balls = nonStriker?.ballsFaced ?: 0,
+                    fours = nonStriker?.fours ?: 0,
+                    sixes = nonStriker?.sixes ?: 0,
+                    strikeRate = nonStriker?.strikeRateFormatted ?: "0.0",
+                    isOnStrike = false
+                )
+            }
         }
     }
 }

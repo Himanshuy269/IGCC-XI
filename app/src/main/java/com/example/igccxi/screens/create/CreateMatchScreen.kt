@@ -321,14 +321,14 @@ fun CreateMatchScreen(
                         } else {
                             uiState.playersPerTeam.toString()
                         }
-                        val maxW = maxOf(1, (displayPlayers.toIntOrNull() ?: 11) - 1)
+                        val maxW = maxOf(1, displayPlayers.toIntOrNull() ?: 11)
 
                         Surface(
                             shape = RoundedCornerShape(8.dp),
                             color = MaterialTheme.colorScheme.secondaryContainer
                         ) {
                             Text(
-                                text = "$displayPlayers Players • Max $maxW Wickets",
+                                text = "$displayPlayers Players • $maxW Wickets (Gully Rules)",
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,

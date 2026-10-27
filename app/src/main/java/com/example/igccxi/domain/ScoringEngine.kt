@@ -33,7 +33,7 @@ object ScoringEngine {
         val bowlingTeam = if (battingTeam.equals(cleanTeamA, ignoreCase = true)) cleanTeamB else cleanTeamA
 
         val striker = BatterScore(id = "b1", name = strikerName)
-        val nonStriker = BatterScore(id = "b2", name = nonStrikerName)
+        val nonStriker = if (match.playersPerTeam > 1) BatterScore(id = "b2", name = nonStrikerName) else null
         val bowler = BowlerScore(id = "bw1", name = bowlerName)
 
         val innings1 = Innings(
@@ -41,9 +41,9 @@ object ScoringEngine {
             battingTeam = battingTeam,
             bowlingTeam = bowlingTeam,
             currentStrikerId = striker.id,
-            currentNonStrikerId = nonStriker.id,
+            currentNonStrikerId = nonStriker?.id ?: "",
             currentBowlerId = bowler.id,
-            batters = listOf(striker, nonStriker),
+            batters = if (nonStriker != null) listOf(striker, nonStriker) else listOf(striker),
             bowlers = listOf(bowler)
         )
 
@@ -104,17 +104,18 @@ object ScoringEngine {
         val updatedBatters = current.batters.map { if (it.id == updatedStriker.id) updatedStriker else it }
         val updatedBowlers = current.bowlers.map { if (it.id == updatedBowler.id) updatedBowler else it }
 
-        // 4. Strike rotation: odd runs swap strike
+        // 4. Strike rotation: odd runs swap strike (only if non-striker exists)
         var newStrikerId = current.currentStrikerId
         var newNonStrikerId = current.currentNonStrikerId
-        if (runs % 2 != 0) {
+        val hasNonStriker = newNonStrikerId.isNotBlank() && current.batters.any { it.id == newNonStrikerId && !it.isOut }
+        if (runs % 2 != 0 && hasNonStriker) {
             val temp = newStrikerId
             newStrikerId = newNonStrikerId
             newNonStrikerId = temp
         }
 
-        // End of over: swap strike again
-        if (isOverComplete) {
+        // End of over: swap strike again (only if non-striker exists)
+        if (isOverComplete && hasNonStriker) {
             val temp = newStrikerId
             newStrikerId = newNonStrikerId
             newNonStrikerId = temp
@@ -197,10 +198,11 @@ object ScoringEngine {
         val updatedBowlers = current.bowlers.map { if (it.id == updatedBowler.id) updatedBowler else it }
         val updatedExtras = current.extras.copy(noBalls = current.extras.noBalls + 1)
 
-        // Strike rotation on odd runs off bat
+        // Strike rotation on odd runs off bat (only if non-striker exists)
         var newStrikerId = current.currentStrikerId
         var newNonStrikerId = current.currentNonStrikerId
-        if (runsOffBat % 2 != 0) {
+        val hasNonStriker = newNonStrikerId.isNotBlank() && current.batters.any { it.id == newNonStrikerId && !it.isOut }
+        if (runsOffBat % 2 != 0 && hasNonStriker) {
             val temp = newStrikerId
             newStrikerId = newNonStrikerId
             newNonStrikerId = temp
@@ -245,8 +247,9 @@ object ScoringEngine {
         if (!match.isScorable) return match
         val current = match.currentInnings
         val striker = current.getStriker() ?: return match
-        val nonStriker = current.getNonStriker() ?: return match
+        val nonStriker = current.getNonStriker()
         val bowler = current.getCurrentBowler() ?: return match
+        val isLoneBatterMode = nonStriker == null || current.currentNonStrikerId.isBlank()
 
         // In cricket rules (MCC Law 33-40):
         // Run outs, retired hurt/out, timed out, and obstructing the field are NOT credited to the bowler.
@@ -264,6 +267,9 @@ object ScoringEngine {
             ballsBowledInOver = if (isOverComplete) 0 else nextBallsInOver
         )
 
+        // When batting alone, the lone striker is the only one who can be out
+        val effectiveStrikerOut = if (isLoneBatterMode) true else isStrikerOut
+
         val ballEvent = BallEvent(
             id = UUID.randomUUID().toString(),
             type = BallType.WICKET,
@@ -271,7 +277,7 @@ object ScoringEngine {
             extraRuns = 0,
             isLegalBall = true,
             isWicket = true,
-            batterId = if (isStrikerOut) striker.id else nonStriker.id,
+            batterId = if (effectiveStrikerOut) striker.id else (nonStriker?.id ?: striker.id),
             bowlerId = bowler.id,
             displayText = if (isBowlerWicket) "W" else "W(RO)"
         )
@@ -281,7 +287,7 @@ object ScoringEngine {
         }
 
         // Striker always faced this legal delivery
-        val updatedStriker = if (isStrikerOut) {
+        val updatedStriker = if (effectiveStrikerOut) {
             striker.copy(
                 ballsFaced = striker.ballsFaced + 1,
                 isOut = true,
@@ -291,8 +297,8 @@ object ScoringEngine {
             striker.copy(ballsFaced = striker.ballsFaced + 1)
         }
 
-        val updatedNonStriker = if (!isStrikerOut) {
-            nonStriker.copy(
+        val updatedNonStriker = if (!isLoneBatterMode && !effectiveStrikerOut) {
+            nonStriker?.copy(
                 isOut = true,
                 dismissal = dismissalDescription
             )
@@ -306,42 +312,53 @@ object ScoringEngine {
         var battersList = current.batters.map {
             when (it.id) {
                 updatedStriker.id -> updatedStriker
-                updatedNonStriker.id -> updatedNonStriker
+                updatedNonStriker?.id -> updatedNonStriker
                 else -> it
             }
         }
 
         var nextStrikerId = updatedStriker.id
-        var nextNonStrikerId = updatedNonStriker.id
+        var nextNonStrikerId = updatedNonStriker?.id ?: ""
 
         if (!isAllOut) {
-            val candidate = newBatterName?.trim()
-            val batterName = if (!candidate.isNullOrEmpty()) {
-                candidate
-            } else {
-                var nextNum = battersList.size + 1
-                while (battersList.any { it.name.trim().equals("Batter $nextNum", ignoreCase = true) }) {
-                    nextNum++
-                }
-                "Batter $nextNum"
-            }
-            val newBatter = BatterScore(
-                id = "b${battersList.size + 1}_${System.currentTimeMillis() % 1000}",
-                name = batterName
-            )
-            battersList = battersList + newBatter
+            // Under Gully Cricket rules: team of X players gets full X wickets.
+            // When (X-1) wickets fall, all X players have batted, so no new batter enters.
+            // The surviving batter stays and continues batting ALONE.
+            val isNowLoneBatsman = nextWickets >= match.maxWickets - 1
 
-            if (isStrikerOut) {
-                nextStrikerId = newBatter.id
+            if (isNowLoneBatsman) {
+                val survivingBatter = if (effectiveStrikerOut) updatedNonStriker else updatedStriker
+                nextStrikerId = survivingBatter?.id ?: updatedStriker.id
+                nextNonStrikerId = ""
             } else {
-                nextNonStrikerId = newBatter.id
+                val candidate = newBatterName?.trim()
+                val batterName = if (!candidate.isNullOrEmpty()) {
+                    candidate
+                } else {
+                    var nextNum = battersList.size + 1
+                    while (battersList.any { it.name.trim().equals("Batter $nextNum", ignoreCase = true) }) {
+                        nextNum++
+                    }
+                    "Batter $nextNum"
+                }
+                val newBatter = BatterScore(
+                    id = "b${battersList.size + 1}_${System.currentTimeMillis() % 1000}",
+                    name = batterName
+                )
+                battersList = battersList + newBatter
+
+                if (effectiveStrikerOut) {
+                    nextStrikerId = newBatter.id
+                } else {
+                    nextNonStrikerId = newBatter.id
+                }
             }
         } else {
-            if (isStrikerOut) nextStrikerId = "" else nextNonStrikerId = ""
+            nextStrikerId = ""
+            nextNonStrikerId = ""
         }
 
-        if (isOverComplete && !isAllOut) {
-            // Swap strike on end of over
+        if (isOverComplete && !isAllOut && nextNonStrikerId.isNotBlank()) {
             val temp = nextStrikerId
             nextStrikerId = nextNonStrikerId
             nextNonStrikerId = temp
@@ -403,15 +420,16 @@ object ScoringEngine {
         val updatedBowlers = current.bowlers.map { if (it.id == updatedBowler.id) updatedBowler else it }
         val updatedExtras = current.extras.copy(byes = current.extras.byes + runs)
 
-        // Strike rotation on odd runs
+        // Strike rotation on odd runs (only if non-striker exists)
         var newStrikerId = current.currentStrikerId
         var newNonStrikerId = current.currentNonStrikerId
-        if (runs % 2 != 0) {
+        val hasNonStriker = newNonStrikerId.isNotBlank() && current.batters.any { it.id == newNonStrikerId && !it.isOut }
+        if (runs % 2 != 0 && hasNonStriker) {
             val temp = newStrikerId
             newStrikerId = newNonStrikerId
             newNonStrikerId = temp
         }
-        if (isOverComplete) {
+        if (isOverComplete && hasNonStriker) {
             val temp = newStrikerId
             newStrikerId = newNonStrikerId
             newNonStrikerId = temp
@@ -474,15 +492,16 @@ object ScoringEngine {
         val updatedBowlers = current.bowlers.map { if (it.id == updatedBowler.id) updatedBowler else it }
         val updatedExtras = current.extras.copy(legByes = current.extras.legByes + runs)
 
-        // Strike rotation on odd runs
+        // Strike rotation on odd runs (only if non-striker exists)
         var newStrikerId = current.currentStrikerId
         var newNonStrikerId = current.currentNonStrikerId
-        if (runs % 2 != 0) {
+        val hasNonStriker = newNonStrikerId.isNotBlank() && current.batters.any { it.id == newNonStrikerId && !it.isOut }
+        if (runs % 2 != 0 && hasNonStriker) {
             val temp = newStrikerId
             newStrikerId = newNonStrikerId
             newNonStrikerId = temp
         }
-        if (isOverComplete) {
+        if (isOverComplete && hasNonStriker) {
             val temp = newStrikerId
             newStrikerId = newNonStrikerId
             newNonStrikerId = temp
@@ -580,6 +599,9 @@ object ScoringEngine {
      */
     fun swapStrike(match: Match): Match {
         val current = match.currentInnings
+        if (current.currentNonStrikerId.isBlank() || current.getNonStriker() == null) {
+            return match // Cannot swap strike when batting alone
+        }
         val updatedInnings = current.copy(
             currentStrikerId = current.currentNonStrikerId,
             currentNonStrikerId = current.currentStrikerId
@@ -637,7 +659,7 @@ object ScoringEngine {
         val b = bowlerName.trim().ifEmpty { "Opening Bowler" }
 
         val striker = BatterScore(id = "b2_1", name = s)
-        val nonStriker = BatterScore(id = "b2_2", name = ns)
+        val nonStriker = if (match.playersPerTeam > 1) BatterScore(id = "b2_2", name = ns) else null
         val bowler = BowlerScore(id = "bw2_1", name = b)
 
         val innings2 = Innings(
@@ -645,9 +667,9 @@ object ScoringEngine {
             battingTeam = battingTeam,
             bowlingTeam = bowlingTeam,
             currentStrikerId = striker.id,
-            currentNonStrikerId = nonStriker.id,
+            currentNonStrikerId = nonStriker?.id ?: "",
             currentBowlerId = bowler.id,
-            batters = listOf(striker, nonStriker),
+            batters = if (nonStriker != null) listOf(striker, nonStriker) else listOf(striker),
             bowlers = listOf(bowler)
         )
 

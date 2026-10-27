@@ -96,6 +96,22 @@ fun ScoreBoardCard(
                     }
 
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        val isLoneBatsman = innings.currentNonStrikerId.isBlank() && !innings.isCompleted && innings.wickets == match.maxWickets - 1
+                        if (isLoneBatsman) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = CricketGold.copy(alpha = 0.9f)
+                            ) {
+                                Text(
+                                    text = "⚡ Lone Batsman",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color.Black,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+
                         if (match.playersPerTeam != 11) {
                             Surface(
                                 shape = RoundedCornerShape(8.dp),

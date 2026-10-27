@@ -186,10 +186,10 @@ class ScoringEngineTest {
         assertEquals(MatchStatus.INNINGS_2, inn2.status)
         assertEquals("Australia", inn2.currentInnings.battingTeam)
 
-        // Australia hits a six -> 6 runs >= target 5!
+        // Australia hits a six -> 6 runs >= target 5! 11 players = 11 wickets
         val wonMatch = ScoringEngine.recordRuns(inn2, 6)
         assertEquals(MatchStatus.COMPLETED, wonMatch.status)
-        assertEquals("Australia won by 10 wickets", wonMatch.result)
+        assertEquals("Australia won by 11 wickets", wonMatch.result)
     }
 
     @Test
@@ -350,7 +350,7 @@ class ScoringEngineTest {
 
     @Test
     fun testFinalResultGrammar_singularRunAndWicket() {
-        // Target is 5, Team B scores 5 -> 10 - 9 wickets = 1 wicket win
+        // Target is 5, Team B scores 5 -> 11 - 10 wickets = 1 wicket win
         val m1 = Match(
             totalOvers = 5,
             teamA = "India",
@@ -358,7 +358,7 @@ class ScoringEngineTest {
             currentInningsNumber = 2,
             target = 5,
             innings1 = Innings(totalRuns = 4, isCompleted = true),
-            innings2 = Innings(battingTeam = "Australia", totalRuns = 5, wickets = 9)
+            innings2 = Innings(battingTeam = "Australia", totalRuns = 5, wickets = 10)
         )
         val resWicket = ScoringEngine.calculateFinalResult(m1)
         assertEquals("Australia won by 1 wicket", resWicket)
@@ -378,7 +378,7 @@ class ScoringEngineTest {
     }
 
     @Test
-    fun testCustomPlayersPerTeam_5Players_allOutAt4Wickets() {
+    fun testCustomPlayersPerTeam_5Players_gullyCricketRules_loneBatsmanAndAllOutAt5Wickets() {
         val initialMatch = Match(
             teamA = "Team 5A",
             teamB = "Team 5B",
@@ -388,7 +388,8 @@ class ScoringEngineTest {
             tossDecision = "bat"
         )
         assertEquals(5, initialMatch.playersPerTeam)
-        assertEquals(4, initialMatch.maxWickets)
+        // Under Gully Cricket rules: 5 players = 5 wickets
+        assertEquals(5, initialMatch.maxWickets)
 
         var cur = ScoringEngine.startMatch(
             match = initialMatch,
@@ -397,7 +398,7 @@ class ScoringEngineTest {
             bowlerName = "B1"
         )
 
-        // Record 3 wickets
+        // Record 3 wickets: P3, P4, P5 arrive
         cur = ScoringEngine.recordWicket(cur, "bowled", "P3", isStrikerOut = true)
         assertEquals(1, cur.currentInnings.wickets)
         assertFalse(cur.currentInnings.isCompleted)
@@ -410,12 +411,31 @@ class ScoringEngineTest {
         assertEquals(3, cur.currentInnings.wickets)
         assertFalse(cur.currentInnings.isCompleted)
 
-        // 4th wicket in 5-player game = ALL OUT
+        // 4th wicket in 5-player game: (5-1 = 4 wickets down)
+        // Under Gully Cricket rules, the surviving batter now bats ALONE!
         cur = ScoringEngine.recordWicket(cur, "bowled", null, isStrikerOut = true)
-        assertEquals(4, cur.innings1.wickets)
+        assertEquals(4, cur.currentInnings.wickets)
+        assertFalse(cur.currentInnings.isCompleted) // NOT all out! Lone batsman rule active
+        assertTrue(cur.currentInnings.currentNonStrikerId.isBlank())
+        assertTrue(cur.currentInnings.currentStrikerId.isNotBlank())
+        val loneBatterId = cur.currentInnings.currentStrikerId
+
+        // Lone batsman scores odd runs (1 run) - strike must NOT rotate away from lone batsman
+        cur = ScoringEngine.recordRuns(cur, 1)
+        assertEquals(1, cur.currentInnings.totalRuns)
+        assertEquals(loneBatterId, cur.currentInnings.currentStrikerId)
+
+        // Lone batsman hits a boundary (4 runs)
+        cur = ScoringEngine.recordRuns(cur, 4)
+        assertEquals(5, cur.currentInnings.totalRuns)
+        assertEquals(loneBatterId, cur.currentInnings.currentStrikerId)
+
+        // 5th wicket in 5-player game = ALL OUT
+        cur = ScoringEngine.recordWicket(cur, "bowled", null, isStrikerOut = true)
+        assertEquals(5, cur.innings1.wickets)
         assertTrue(cur.innings1.isCompleted)
         assertEquals(MatchStatus.INNINGS_BREAK, cur.status)
-        assertEquals(1, cur.target) // 0 runs scored + 1 = target 1
+        assertEquals(6, cur.target) // 5 runs scored + 1 = target 6
     }
 
     @Test
@@ -430,9 +450,10 @@ class ScoringEngineTest {
             innings1 = Innings(totalRuns = 49, battingTeam = "Team 7A", isCompleted = true),
             innings2 = Innings(totalRuns = 50, wickets = 2, battingTeam = "Team 7B")
         )
-        assertEquals(6, match7.maxWickets)
+        // Gully Cricket: 7 players = 7 wickets
+        assertEquals(7, match7.maxWickets)
         val result = ScoringEngine.calculateFinalResult(match7)
-        // 6 max wickets - 2 wickets fallen = 4 wickets left
-        assertEquals("Team 7B won by 4 wickets", result)
+        // 7 max wickets - 2 wickets fallen = 5 wickets left
+        assertEquals("Team 7B won by 5 wickets", result)
     }
 }

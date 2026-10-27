@@ -126,7 +126,7 @@ data class Match(
     val createdAt: Long = System.currentTimeMillis()
 ) {
     val maxWickets: Int
-        get() = maxOf(1, playersPerTeam - 1)
+        get() = maxOf(1, playersPerTeam)
 
     val isScorable: Boolean
         get() = status == MatchStatus.INNINGS_1 || status == MatchStatus.INNINGS_2

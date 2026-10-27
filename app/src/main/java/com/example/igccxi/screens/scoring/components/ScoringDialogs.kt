@@ -57,6 +57,7 @@ fun WicketDialog(
     nonStrikerName: String = "",
     currentWickets: Int = 0,
     maxWickets: Int = 10,
+    isBattingAlone: Boolean = false,
     onDismiss: () -> Unit,
     onConfirm: (dismissal: String, newBatterName: String, isStrikerOut: Boolean) -> Unit
 ) {
@@ -67,9 +68,11 @@ fun WicketDialog(
     var newBatter by remember { mutableStateOf("") }
     var validationError by remember { mutableStateOf<String?>(null) }
 
-    val isAllOutWicket = currentWickets >= (maxWickets - 1)
+    val isAllOutWicket = isBattingAlone || (currentWickets + 1 >= maxWickets)
+    val isTransitionToLoneBatsman = !isAllOutWicket && (currentWickets + 1 == maxWickets - 1)
+    val noNextBatterRequired = isAllOutWicket || isTransitionToLoneBatsman
     val cleanName = newBatter.trim()
-    val isDuplicate = !isAllOutWicket && cleanName.isNotEmpty() &&
+    val isDuplicate = !noNextBatterRequired && cleanName.isNotEmpty() &&
         existingBatterNames.any { it.trim().equals(cleanName, ignoreCase = true) }
 
     AlertDialog(
@@ -93,7 +96,11 @@ fun WicketDialog(
                 Spacer(modifier = Modifier.width(8.dp))
                 Column {
                     Text(
-                        text = if (isAllOutWicket) "Record Final Wicket (All Out)" else "Record Wicket / Dismissal",
+                        text = when {
+                            isAllOutWicket -> "Record Final Wicket (All Out)"
+                            isTransitionToLoneBatsman -> "Record Wicket #${currentWickets + 1} (Lone Batsman)"
+                            else -> "Record Wicket / Dismissal"
+                        },
                         fontWeight = FontWeight.Bold,
                         fontSize = 17.sp
                     )
@@ -131,8 +138,8 @@ fun WicketDialog(
                     }
                 }
 
-                // If Run Out: allow selecting whether striker or non-striker was run out
-                if (selectedDismissal.equals("Run Out", ignoreCase = true)) {
+                // If Run Out and 2 batters at crease: allow selecting who was run out
+                if (selectedDismissal.equals("Run Out", ignoreCase = true) && !isBattingAlone && nonStrikerName.isNotBlank()) {
                     Text(
                         text = "Who was Run Out?",
                         style = MaterialTheme.typography.labelSmall,
@@ -182,6 +189,20 @@ fun WicketDialog(
                             modifier = Modifier.padding(10.dp)
                         )
                     }
+                } else if (isTransitionToLoneBatsman) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "⚡ Gully Cricket Rule: All $maxWickets players have batted. The remaining not-out batter will continue batting alone until the final ${maxWickets}th wicket.",
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(10.dp)
+                        )
+                    }
                 } else {
                     OutlinedTextField(
                         value = newBatter,
@@ -225,13 +246,22 @@ fun WicketDialog(
                         "${selectedDismissal.lowercase()} (${fielderBowlerDetail.trim()})"
                     else
                         selectedDismissal.lowercase()
-                    onConfirm(fullDismissal, cleanName, isStrikerOut)
+                    val nextName = if (noNextBatterRequired) "" else cleanName
+                    val effectiveOut = if (isBattingAlone) true else isStrikerOut
+                    onConfirm(fullDismissal, nextName, effectiveOut)
                 },
                 enabled = !isDuplicate,
                 colors = ButtonDefaults.buttonColors(containerColor = CricketWicketRed),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text(if (isAllOutWicket) "Confirm All Out" else "Confirm Out", fontWeight = FontWeight.Bold)
+                Text(
+                    text = when {
+                        isAllOutWicket -> "Confirm All Out"
+                        isTransitionToLoneBatsman -> "Confirm (Lone Batsman)"
+                        else -> "Confirm Out"
+                    },
+                    fontWeight = FontWeight.Bold
+                )
             }
         },
         dismissButton = {

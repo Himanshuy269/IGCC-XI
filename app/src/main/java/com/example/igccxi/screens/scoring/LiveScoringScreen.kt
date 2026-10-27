@@ -373,12 +373,14 @@ fun LiveScoringScreen(
             }
 
             if (uiState.showWicketDialog) {
+                val isBattingAlone = nonStriker == null || innings.currentNonStrikerId.isBlank()
                 WicketDialog(
                     existingBatterNames = innings.batters.map { it.name }.filter { it.isNotBlank() },
                     strikerName = striker?.name ?: "Striker",
-                    nonStrikerName = nonStriker?.name ?: "Non-Striker",
+                    nonStrikerName = nonStriker?.name ?: "",
                     currentWickets = innings.wickets,
                     maxWickets = match.maxWickets,
+                    isBattingAlone = isBattingAlone,
                     onDismiss = { viewModel.dismissWicketDialog() },
                     onConfirm = { dismissal, newBatter, isStrikerOut ->
                         viewModel.recordWicket(dismissal, newBatter, isStrikerOut)
