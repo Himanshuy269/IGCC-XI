@@ -14,6 +14,7 @@ sealed class Screen(val route: String) {
         const val MATCH_ID_ARG = "matchId"
         fun createRoute(matchId: String) = "match_details/$matchId"
     }
-    data object MatchHistory : Screen("match_history")
+    data object Scorecards : Screen("scorecards")
+    data object MatchHistory : Screen("scorecards") // Backwards compatibility alias
     data object Rankings : Screen("rankings")
 }

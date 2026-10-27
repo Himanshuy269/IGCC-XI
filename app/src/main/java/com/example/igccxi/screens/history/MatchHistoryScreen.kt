@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.igccxi.ui.components.ScoreCardSummary
+import com.example.igccxi.ui.theme.CricketLiveRed
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -70,8 +71,10 @@ import java.util.TimeZone
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MatchHistoryScreen(
-    onNavigateBack: () -> Unit,
+    canNavigateBack: Boolean = false,
+    onNavigateBack: (() -> Unit)? = null,
     onNavigateToDetails: (String) -> Unit,
+    onNavigateToScoring: ((String) -> Unit)? = null,
     viewModel: MatchHistoryViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -120,20 +123,25 @@ fun MatchHistoryScreen(
                 title = {
                     Column {
                         Text(
-                            text = "Scorecard Archive",
+                            text = "Scorecards",
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp
                         )
                         Text(
-                            text = if (uiState.selectedDate.isNotEmpty()) "Date: ${uiState.selectedDate}" else "Search by Date & Calendar",
-                            fontSize = 12.sp,
+                            text = if (uiState.selectedDate.isNotEmpty())
+                                "Filtered Date: ${uiState.selectedDate} (${uiState.matches.size} matches)"
+                            else
+                                "All matches, live games & scorecard archives",
+                            fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    if (canNavigateBack && onNavigateBack != null) {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
                     }
                 },
                 actions = {
@@ -178,17 +186,67 @@ fun MatchHistoryScreen(
                 shape = RoundedCornerShape(12.dp)
             )
 
-            // 2. Calendar Selector Section Card
+            // 2. Status Filter Tabs (All, Live, Finished)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = uiState.selectedFilter == ScorecardFilter.ALL,
+                    onClick = { viewModel.onStatusFilterSelected(ScorecardFilter.ALL) },
+                    label = { Text("All (${uiState.totalMatchesCount})", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                )
+
+                FilterChip(
+                    selected = uiState.selectedFilter == ScorecardFilter.LIVE,
+                    onClick = { viewModel.onStatusFilterSelected(ScorecardFilter.LIVE) },
+                    label = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (uiState.liveMatchesCount > 0) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = CricketLiveRed,
+                                    modifier = Modifier.size(7.dp)
+                                ) {}
+                                Spacer(modifier = Modifier.width(5.dp))
+                            }
+                            Text("Live (${uiState.liveMatchesCount})", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                )
+
+                FilterChip(
+                    selected = uiState.selectedFilter == ScorecardFilter.COMPLETED,
+                    onClick = { viewModel.onStatusFilterSelected(ScorecardFilter.COMPLETED) },
+                    label = { Text("Finished (${uiState.completedMatchesCount})", fontWeight = FontWeight.Bold, fontSize = 12.sp) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                )
+            }
+
+            // 3. Calendar Selector & Date Filter Chips
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 4.dp),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
                 )
             ) {
-                Column(modifier = Modifier.padding(12.dp)) {
+                Column(modifier = Modifier.padding(10.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -198,29 +256,30 @@ fun MatchHistoryScreen(
                             Surface(
                                 shape = CircleShape,
                                 color = MaterialTheme.colorScheme.primaryContainer,
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(28.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
                                         imageVector = Icons.Default.DateRange,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(16.dp)
                                     )
                                 }
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Search by Date",
+                                text = "Date Filter",
                                 fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleSmall
+                                style = MaterialTheme.typography.titleSmall,
+                                fontSize = 13.sp
                             )
                         }
 
                         Button(
                             onClick = { showDatePicker = true },
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary
                             )
@@ -228,14 +287,14 @@ fun MatchHistoryScreen(
                             Icon(
                                 imageVector = Icons.Default.CalendarMonth,
                                 contentDescription = null,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(14.dp)
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Open Calendar", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Calendar", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     // Selected Date Active Banner
                     if (uiState.selectedDate.isNotEmpty()) {
@@ -247,7 +306,7 @@ fun MatchHistoryScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                    .padding(horizontal = 10.dp, vertical = 4.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -262,7 +321,7 @@ fun MatchHistoryScreen(
                                     Text(
                                         text = "Filter: ${uiState.selectedDate} (${uiState.matches.size} found)",
                                         fontWeight = FontWeight.SemiBold,
-                                        fontSize = 12.sp,
+                                        fontSize = 11.sp,
                                         color = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -274,7 +333,7 @@ fun MatchHistoryScreen(
                                     Icon(
                                         imageVector = Icons.Default.Clear,
                                         contentDescription = null,
-                                        modifier = Modifier.size(14.dp),
+                                        modifier = Modifier.size(13.dp),
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                     Spacer(modifier = Modifier.width(2.dp))
@@ -287,10 +346,10 @@ fun MatchHistoryScreen(
                                 }
                             }
                         }
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                     }
 
-                    // Quick Date Chips (All Dates, Today, Yesterday, Recorded Dates)
+                    // Quick Date Chips
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -300,7 +359,7 @@ fun MatchHistoryScreen(
                         FilterChip(
                             selected = uiState.selectedDate.isEmpty(),
                             onClick = { viewModel.onClearDateFilter() },
-                            label = { Text("All Dates (${uiState.totalMatchesCount})", fontSize = 11.sp) },
+                            label = { Text("All Dates", fontSize = 11.sp) },
                             colors = FilterChipDefaults.filterChipColors()
                         )
 
@@ -336,7 +395,7 @@ fun MatchHistoryScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // 3. Matches List or Empty State
+            // 4. Matches List or Empty State
             if (uiState.isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -382,10 +441,12 @@ fun MatchHistoryScreen(
                             Spacer(modifier = Modifier.height(12.dp))
 
                             Text(
-                                text = if (uiState.selectedDate.isNotEmpty())
-                                    "No Scorecards on ${uiState.selectedDate}"
-                                else
-                                    "No Matches Found",
+                                text = when {
+                                    uiState.selectedDate.isNotEmpty() -> "No Scorecards on ${uiState.selectedDate}"
+                                    uiState.selectedFilter == ScorecardFilter.LIVE -> "No Matches Live Right Now"
+                                    uiState.selectedFilter == ScorecardFilter.COMPLETED -> "No Finished Matches Found"
+                                    else -> "No Matches Found"
+                                },
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.Center
@@ -394,10 +455,16 @@ fun MatchHistoryScreen(
                             Spacer(modifier = Modifier.height(6.dp))
 
                             Text(
-                                text = if (uiState.selectedDate.isNotEmpty())
-                                    "No cricket matches were recorded for this date. You can select another date from the calendar or view all matches."
-                                else
-                                    "No matches match your search query. Try another term or clear filters.",
+                                text = when {
+                                    uiState.selectedDate.isNotEmpty() ->
+                                        "No cricket matches were recorded for this date. You can select another date from the calendar or view all matches."
+                                    uiState.selectedFilter == ScorecardFilter.LIVE ->
+                                        "There are no active matches currently in progress. Start a new match or check finished games."
+                                    uiState.searchQuery.isNotEmpty() ->
+                                        "No matches match '${uiState.searchQuery}'. Try another team name or clear search."
+                                    else ->
+                                        "No scorecards match the active filters. Tap 'Reset Filters' to see all matches."
+                                },
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
@@ -421,13 +488,10 @@ fun MatchHistoryScreen(
                                 }
 
                                 Button(
-                                    onClick = {
-                                        viewModel.onClearDateFilter()
-                                        viewModel.onSearchQueryChanged("")
-                                    },
+                                    onClick = { viewModel.onClearAllFilters() },
                                     shape = RoundedCornerShape(10.dp)
                                 ) {
-                                    Text("Show All")
+                                    Text("Show All Matches")
                                 }
                             }
                         }
@@ -441,7 +505,13 @@ fun MatchHistoryScreen(
                     items(uiState.matches, key = { it.id }) { match ->
                         ScoreCardSummary(
                             match = match,
-                            onClick = { onNavigateToDetails(match.id) }
+                            onClick = {
+                                if (match.scorerId == uiState.currentUserId && match.isScorable && onNavigateToScoring != null) {
+                                    onNavigateToScoring(match.id)
+                                } else {
+                                    onNavigateToDetails(match.id)
+                                }
+                            }
                         )
                     }
                 }

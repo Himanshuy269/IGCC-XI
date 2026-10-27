@@ -442,9 +442,9 @@ fun CleanHeroBanner(
                             shape = RoundedCornerShape(12.dp),
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                         ) {
-                            Icon(Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(15.dp))
+                            Icon(Icons.Default.SportsCricket, contentDescription = null, modifier = Modifier.size(15.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Archive", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text("Scorecards", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
 
                         Button(
@@ -804,4 +804,386 @@ fun ActiveUsersInfoDialog(
             }
         }
     )
+}
+
+/**
+ * Modern club overview card displaying quick stats and shortcuts to Scorecards and Rankings.
+ */
+@Composable
+fun ClubOverviewStatsCard(
+    totalMatches: Int,
+    liveMatches: Int,
+    completedMatches: Int,
+    activeUsers: Int,
+    onNavigateToScorecards: () -> Unit,
+    onNavigateToRankings: () -> Unit
+) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "MATCH DASHBOARD",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        letterSpacing = 0.8.sp
+                    )
+                    Text(
+                        text = "Club Season Overview",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SportsCricket,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "IGCC XI",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // 4-stat grid
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                StatMetricBox(
+                    title = "Total Matches",
+                    value = totalMatches.toString(),
+                    icon = Icons.Default.SportsCricket,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f)
+                )
+                StatMetricBox(
+                    title = "Live Ongoing",
+                    value = liveMatches.toString(),
+                    icon = Icons.Default.FiberManualRecord,
+                    tint = if (liveMatches > 0) CricketLiveRed else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                StatMetricBox(
+                    title = "Completed",
+                    value = completedMatches.toString(),
+                    icon = Icons.Default.CalendarMonth,
+                    tint = CricketSuccessGreen,
+                    modifier = Modifier.weight(1f)
+                )
+                StatMetricBox(
+                    title = "Active Scorers",
+                    value = activeUsers.toString(),
+                    icon = Icons.Default.People,
+                    tint = CricketGold,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onNavigateToScorecards,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.SportsCricket,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Scorecards", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+
+                Button(
+                    onClick = onNavigateToRankings,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = CricketGold,
+                        contentColor = Color.Black
+                    ),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.EmojiEvents,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Rankings", fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatMetricBox(
+    title: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    tint: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        modifier = modifier
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium
+                )
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = tint,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = value,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+/**
+ * Spotlight card displaying the latest concluded match result with quick link to its scorecard.
+ */
+@Composable
+fun LatestMatchResultCard(
+    match: Match,
+    onViewScorecard: () -> Unit,
+    onViewAllScorecards: () -> Unit
+) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "LATEST RESULT",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 0.8.sp
+                )
+                Text(
+                    text = if (match.date.isNotEmpty()) match.date else "Completed",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "${match.teamA} vs ${match.teamB}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Black
+            )
+
+            if (match.result.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = match.result,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = CricketSuccessGreen
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick = onViewAllScorecards,
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                ) {
+                    Text(
+                        text = "View all in Scorecards →",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                Button(
+                    onClick = onViewScorecard,
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                ) {
+                    Text("Full Scorecard", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Summary card highlighting key IGCC XI cricket rules & features.
+ */
+@Composable
+fun CricketRulesFeaturesCard() {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "IGCC XI FEATURES",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 0.8.sp
+                )
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = CricketGold.copy(alpha = 0.16f)
+                ) {
+                    Text(
+                        text = "Rules & Guide",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            FeatureBullet(
+                icon = Icons.Default.People,
+                title = "Custom Players (5 to 11)",
+                description = "Play 5v5, 6v6, 7v7, 8v8 or 11v11 per side. All-out wickets adapt automatically."
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            FeatureBullet(
+                icon = Icons.Default.SportsCricket,
+                title = "100% Cricket Rule Accuracy",
+                description = "Automatic bowler change popup after every over, wide & no-ball extras, free hits, and striker rotations."
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            FeatureBullet(
+                icon = Icons.Default.CalendarMonth,
+                title = "Official PDF Scorecards",
+                description = "Share detailed match scorecards, complete with batting cards, bowling economy, and fall of wickets."
+            )
+        }
+    }
+}
+
+@Composable
+private fun FeatureBullet(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    description: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer,
+            modifier = Modifier.size(28.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(10.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(1.dp))
+            Text(
+                text = description,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                lineHeight = 15.sp
+            )
+        }
+    }
 }

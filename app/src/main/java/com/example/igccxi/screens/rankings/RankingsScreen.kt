@@ -69,7 +69,8 @@ import com.example.igccxi.ui.theme.CricketWicketRed
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RankingsScreen(
-    onNavigateBack: () -> Unit,
+    canNavigateBack: Boolean = false,
+    onNavigateBack: (() -> Unit)? = null,
     viewModel: RankingsViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -92,8 +93,10 @@ fun RankingsScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    if (canNavigateBack && onNavigateBack != null) {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
