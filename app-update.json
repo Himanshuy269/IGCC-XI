@@ -1,10 +1,10 @@
 {
-  "latestVersionCode": 10206,
-  "latestVersionName": "1.2.6",
-  "releaseNotes": "• Custom Players Per Side: Support for 5s, 6s, 7s, 8s, 11s or custom team sizes (box & gully cricket)\n• Dynamic all-out wickets: innings ends automatically at (Players - 1) wickets\n• Custom victory margins (e.g. won by X wickets in custom player matches)\n• Real-time Active Users corner badge and presence synchronization\n• 100% accurate cricket rule compliance (MCC Laws)\n• Run out attribution, maiden overs, byes & leg byes\n• Free Hit alert banner on No-Ball",
-  "downloadUrl": "https://github.com/Himanshuy269/IGCC-XI/releases/download/v1.2.6/IGCC-XI.apk",
+  "latestVersionCode": 10207,
+  "latestVersionName": "1.2.7",
+  "releaseNotes": "• 3-Tab Bottom Navigation: Seamless switching between Home, Scorecards, and Player Rankings\n• Redesigned Home Screen Dashboard: Clean cricket central with live match hero card, club statistics, latest result spotlight, and quick actions\n• Dedicated Scorecards Screen: Search by team or match ID, filter by status (All, Live, Finished) and date calendar\n• Gully Cricket Rules (X Players = X Wickets): Each team gets full X wickets. When X-1 wickets fall, the lone batsman continues batting alone until all-out\n• Lone Batsman Live Scoring: Ball-by-ball strike retention and live visual indicator during lone batsman innings\n• Real-time Active Users live presence badge\n• In-app auto-update with direct APK installation",
+  "downloadUrl": "https://github.com/Himanshuy269/IGCC-XI/releases/download/v1.2.7/IGCC-XI.apk",
   "isMandatory": false,
   "minSupportedVersionCode": 1,
-  "fileSizeBytes": 18340743,
+  "fileSizeBytes": 18350000,
   "releaseDate": "2026-10-27"
 }
