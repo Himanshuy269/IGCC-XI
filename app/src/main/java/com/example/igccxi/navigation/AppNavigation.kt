@@ -1,10 +1,16 @@
 package com.example.igccxi.navigation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -20,14 +26,18 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -90,62 +100,50 @@ fun AppNavigation(
         Screen.Rankings.route
     )
     val showBottomBar = currentRoute in topLevelRoutes
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
-            if (showBottomBar) {
-                NavigationBar(
-                    modifier = Modifier.fillMaxWidth(),
-                    windowInsets = WindowInsets(0, 0, 0, 0),
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 0.dp
-                ) {
-                    bottomNavItems.forEach { item ->
-                        val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
-                        NavigationBarItem(
-                            icon = {
-                                Icon(
-                                    imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                                    contentDescription = item.title
-                                )
-                            },
-                            label = {
-                                Text(
-                                    text = item.title,
-                                    fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Medium,
-                                    fontSize = 12.sp
-                                )
-                            },
-                            selected = selected,
-                            onClick = {
-                                if (currentRoute != item.route) {
-                                    navController.navigate(item.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
+            AnimatedVisibility(
+                visible = showBottomBar,
+                enter = slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = tween(220)
+                ) + fadeIn(animationSpec = tween(200)),
+                exit = slideOutVertically(
+                    targetOffsetY = { it },
+                    animationSpec = tween(200)
+                ) + fadeOut(animationSpec = tween(180))
+            ) {
+                IgccBottomNavigationBar(
+                    currentDestination = currentDestination,
+                    onNavigate = { route ->
+                        if (currentRoute != route) {
+                            navController.navigate(route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
                                 }
-                            },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.primary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                                indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        )
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
                     }
-                }
+                )
             }
         }
     ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = Screen.Home.route,
-            modifier = Modifier.padding(innerPadding),
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
+        ) {
+            NavHost(
+                navController = navController,
+                startDestination = Screen.Home.route,
+                modifier = Modifier.fillMaxSize(),
             enterTransition = {
                 slideIntoContainer(
                     towards = AnimatedContentTransitionScope.SlideDirection.Left,
@@ -259,6 +257,53 @@ fun AppNavigation(
                     canNavigateBack = false
                 )
             }
+        }
+    }
+}
+}
+
+/**
+ * Reusable, memoized bottom navigation bar for top-level tabs.
+ * Isolated into a distinct component to prevent unnecessary root Scaffold recompositions.
+ */
+@Composable
+private fun IgccBottomNavigationBar(
+    currentDestination: NavDestination?,
+    onNavigate: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    NavigationBar(
+        modifier = modifier.fillMaxWidth(),
+        windowInsets = WindowInsets(0, 0, 0, 0),
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp
+    ) {
+        bottomNavItems.forEach { item ->
+            val selected = currentDestination?.hierarchy?.any { it.route == item.route } == true
+            NavigationBarItem(
+                icon = {
+                    Icon(
+                        imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
+                        contentDescription = item.title
+                    )
+                },
+                label = {
+                    Text(
+                        text = item.title,
+                        fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Medium,
+                        fontSize = 12.sp
+                    )
+                },
+                selected = selected,
+                onClick = { onNavigate(item.route) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            )
         }
     }
 }
