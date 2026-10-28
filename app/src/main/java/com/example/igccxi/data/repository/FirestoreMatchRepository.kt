@@ -31,12 +31,25 @@ class FirestoreMatchRepository(
     private val matchesCollection = firestore.collection("matches")
 
     companion object {
-        private const val PURGED_MATCH_ID = "F2A7oeEcJkZ6ZS2z4aoF"
-    }
+        // App Data Reset Epoch: all test match scorecards created prior to this timestamp are permanently purged & reset.
+        const val DATA_RESET_EPOCH_MS = 1793136000000L
 
-    private fun isPurgedMatch(id: String, teamA: String, teamB: String): Boolean {
-        return id == PURGED_MATCH_ID ||
-                (teamA.trim().equals("123", ignoreCase = true) && teamB.trim().equals("456", ignoreCase = true))
+        val PURGED_MATCH_IDS = setOf(
+            "F2A7oeEcJkZ6ZS2z4aoF",
+            "BqSQumBqWYACyUNqUejC",
+            "ByHqjCGGs6PIMoAJeMM8",
+            "bas5xgJbDcttspMMANS6",
+            "bs6wIYJzSaCKcbe2x0gt",
+            "l2g2C6DZc4nkbqcqM2h2",
+            "sRS9jGq0kh6jZpETkHTO",
+            "zWfTJTNutdURFHKEmrjh"
+        )
+
+        fun isPurgedMatch(match: Match): Boolean {
+            return match.createdAt < DATA_RESET_EPOCH_MS ||
+                    match.id in PURGED_MATCH_IDS ||
+                    (match.teamA.trim().equals("123", ignoreCase = true) && match.teamB.trim().equals("456", ignoreCase = true))
+        }
     }
 
     override fun observeMatches(): Flow<List<Match>> = callbackFlow {
@@ -52,9 +65,11 @@ class FirestoreMatchRepository(
                     val matches = snapshot.documents.mapNotNull { doc ->
                         doc.toObject(Match::class.java)?.copy(id = doc.id)
                     }.filterNot { match ->
-                        val shouldPurge = isPurgedMatch(match.id, match.teamA, match.teamB)
+                        val shouldPurge = isPurgedMatch(match)
                         if (shouldPurge && uid.isNotEmpty() && (match.scorerId == uid || match.scorerId.isEmpty())) {
-                            matchesCollection.document(match.id).delete()
+                            try {
+                                matchesCollection.document(match.id).delete()
+                            } catch (_: Exception) {}
                         }
                         shouldPurge
                     }
@@ -65,7 +80,7 @@ class FirestoreMatchRepository(
     }
 
     override fun observeMatch(matchId: String): Flow<Match?> = callbackFlow {
-        if (matchId == PURGED_MATCH_ID) {
+        if (matchId in PURGED_MATCH_IDS) {
             trySend(null)
             awaitClose { }
             return@callbackFlow
@@ -78,7 +93,7 @@ class FirestoreMatchRepository(
                 }
                 if (snapshot != null && snapshot.exists()) {
                     val match = snapshot.toObject(Match::class.java)?.copy(id = snapshot.id)
-                    if (match != null && isPurgedMatch(match.id, match.teamA, match.teamB)) {
+                    if (match != null && isPurgedMatch(match)) {
                         trySend(null)
                     } else {
                         trySend(match)
