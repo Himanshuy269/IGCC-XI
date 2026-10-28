@@ -61,7 +61,7 @@ fun WicketDialog(
     onDismiss: () -> Unit,
     onConfirm: (dismissal: String, newBatterName: String, isStrikerOut: Boolean) -> Unit
 ) {
-    val commonDismissals = listOf("Bowled", "Caught", "LBW", "Run Out", "Stumped", "Hit Wicket")
+    val commonDismissals = listOf("Bowled", "Caught", "LBW", "Run Out", "Stumped", "Hit Wicket", "Boundary Paar")
     var selectedDismissal by remember { mutableStateOf("Caught") }
     var isStrikerOut by remember { mutableStateOf(true) }
     var fielderBowlerDetail by remember { mutableStateOf("") }
@@ -165,11 +165,28 @@ fun WicketDialog(
                     }
                 }
 
+                val isBoundaryPaar = selectedDismissal.equals("Boundary Paar", ignoreCase = true)
+                if (isBoundaryPaar) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "🏏 Gully Rule: Ball hit directly outside or over the boundary wall/fence is OUT! Striker is dismissed.",
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                }
+
                 OutlinedTextField(
                     value = fielderBowlerDetail,
                     onValueChange = { fielderBowlerDetail = it },
-                    label = { Text("Fielder / Catcher (Optional)") },
-                    placeholder = { Text("e.g. c Kohli b Bumrah") },
+                    label = { Text(if (isBoundaryPaar) "Note / Detail (Optional)" else "Fielder / Catcher (Optional)") },
+                    placeholder = { Text(if (isBoundaryPaar) "e.g. over the wall / direct out" else "e.g. c Kohli b Bumrah") },
                     singleLine = true,
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()

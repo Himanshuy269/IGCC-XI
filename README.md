@@ -1,6 +1,6 @@
 # 🏏 IGCC XI — Cricket Live Scoring & Analytics App
 
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](https://github.com/Himanshuy269/IGCC-XI/releases)
+[![Version](https://img.shields.io/badge/version-1.3.3-blue.svg)](https://github.com/Himanshuy269/IGCC-XI/releases)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0+-purple.svg)](https://kotlinlang.org)
 [![Android](https://img.shields.io/badge/Platform-Android%207.0%2B%20(API%2024%2B)-green.svg)](https://developer.android.com)
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-brightgreen.svg)](https://developer.android.com/jetpack/compose)
@@ -16,6 +16,7 @@ A modern, fast, and production-ready Android cricket scoring app tailored for cr
 - **🏏 Gully Cricket Friendly**:
   - **Custom Team Sizes**: Play with any number of players per side (e.g., 5, 7, 11).
   - **Last Man Standing**: In an $X$-player team, all $X$ wickets must fall; lone batters can continue batting.
+  - **Boundary Paar Rule**: Dedicated dismissal mode ("Boundary Paar") for balls hit directly outside playing grounds or over boundaries.
 - **🧭 Bottom Navigation**: 
   - **Home**: Club stats overview, featured live match, and quick action cards.
   - **Scorecards**: Full match archive with live filter chips (All / Live / Finished), date picker filter, and search.
@@ -34,7 +35,7 @@ A modern, fast, and production-ready Android cricket scoring app tailored for cr
 - **Concurrency & Reactivity**: Kotlin Coroutines & `StateFlow`
 - **Cloud Backend**: Google Cloud Firestore (real-time listeners and offline caching)
 - **Navigation**: Jetpack Navigation Compose with animated transitions
-- **Testing**: Comprehensive unit test suite (35 unit tests covering scoring engine, rankings, and use cases)
+- **Testing**: Comprehensive unit test suite (36 unit tests covering scoring engine, rankings, and use cases)
 - **CI/CD**: GitHub Actions automated release pipeline for signed APK artifacts
 
 ---
