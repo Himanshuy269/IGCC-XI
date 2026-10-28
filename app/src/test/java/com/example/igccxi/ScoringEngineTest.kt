@@ -320,6 +320,30 @@ class ScoringEngineTest {
     }
 
     @Test
+    fun testBoundaryPaarDismissal_creditsBowlerAndDismissesStriker() {
+        var current = match
+        val bowlerBefore = current.currentInnings.getCurrentBowler()!!
+        val strikerBefore = current.currentInnings.getStriker()!!
+        val wicketsBefore = current.currentInnings.wickets
+
+        current = ScoringEngine.recordWicket(
+            match = current,
+            dismissalDescription = "boundary paar",
+            newBatterName = "Kashish",
+            isStrikerOut = true
+        )
+
+        val bowlerAfter = current.currentInnings.bowlers.first { it.id == bowlerBefore.id }
+        val strikerAfter = current.currentInnings.batters.first { it.id == strikerBefore.id }
+
+        assertEquals(wicketsBefore + 1, current.currentInnings.wickets)
+        assertEquals(bowlerBefore.wickets + 1, bowlerAfter.wickets) // Bowler gets wicket credit
+        assertTrue(strikerAfter.isOut)
+        assertEquals("boundary paar", strikerAfter.dismissal)
+        assertEquals("Kashish", current.currentInnings.getStriker()?.name)
+    }
+
+    @Test
     fun testByesAndLegByes_accrueToTeamAndExtrasNotBatsmanOrBowler() {
         var current = match
         // Rohit faces ball 1, runs 1 Bye
