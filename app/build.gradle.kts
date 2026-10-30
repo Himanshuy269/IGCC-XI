@@ -4,12 +4,12 @@ plugins {
     alias(libs.plugins.google.services)
 }
 
+val vCode = project.findProperty("versionCode")?.toString()?.toIntOrNull() ?: 10304
+val vName = project.findProperty("versionName")?.toString() ?: "1.3.4"
+
 android {
     namespace = "com.example.igccxi"
     compileSdk = 37
-
-    val vCode = project.findProperty("versionCode")?.toString()?.toIntOrNull() ?: 10304
-    val vName = project.findProperty("versionName")?.toString() ?: "1.3.4"
 
     defaultConfig {
         applicationId = "com.example.igccxi"
@@ -60,17 +60,27 @@ android {
         compose = true
     }
 
-    // Rename output APK to app name instead of default "app-release.apk"
-    applicationVariants.all {
-        val variant = this
-        variant.outputs
-            .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
-            .forEach { output ->
-                if (variant.buildType.name == "release") {
-                    output.outputFileName = "IGCC-XI-v${vName}.apk"
-                }
+}
+
+// Rename release APK to app name — configuration-cache compatible
+val renameReleaseApk by tasks.registering {
+    // Use lazy Providers — no Project reference captured (config-cache safe)
+    val outputDir = layout.buildDirectory.dir("outputs/apk/release")
+    val targetName = "IGCC-XI-v${vName}.apk"
+    outputs.upToDateWhen { false }
+    doLast {
+        val dir = outputDir.get().asFile
+        dir.listFiles()
+            ?.filter { it.extension == "apk" && it.name != targetName }
+            ?.forEach { apk ->
+                apk.renameTo(File(dir, targetName))
+                println("Renamed APK: ${apk.name} → $targetName")
             }
     }
+}
+
+tasks.matching { it.name == "assembleRelease" }.configureEach {
+    finalizedBy(renameReleaseApk)
 }
 
 dependencies {
