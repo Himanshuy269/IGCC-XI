@@ -37,7 +37,8 @@ class CreateMatchViewModel @JvmOverloads constructor(
         it.copy(
             strikerName = if (it.strikerName.isEmpty()) "Batter 1" else it.strikerName,
             nonStrikerName = if (it.nonStrikerName.isEmpty()) "Batter 2" else it.nonStrikerName,
-            bowlerName = if (it.bowlerName.isEmpty()) "Bowler 1" else it.bowlerName
+            bowlerName = if (it.bowlerName.isEmpty()) "Bowler 1" else it.bowlerName,
+            commonPlayerName = if (it.hasCommonPlayer && it.commonPlayerName.isEmpty()) "Common Player" else it.commonPlayerName
         )
     }
 
@@ -144,6 +145,17 @@ class CreateMatchViewModel @JvmOverloads constructor(
         )
     }
 
+    fun onHasCommonPlayerChange(enabled: Boolean) = _uiState.update {
+        it.copy(
+            hasCommonPlayer = enabled,
+            commonPlayerName = if (enabled && it.commonPlayerName.isEmpty()) "Common Player" else it.commonPlayerName,
+            errorMessage = null
+        )
+    }
+    fun onCommonPlayerNameChange(name: String) = _uiState.update {
+        it.copy(commonPlayerName = name, errorMessage = null)
+    }
+
     fun setTossWinnerIsTeamA(isTeamA: Boolean) = _uiState.update { it.copy(isTeamAWonToss = isTeamA) }
     fun onTossWinnerChange(isTeamA: Boolean) = _uiState.update { it.copy(isTeamAWonToss = isTeamA) }
     fun onTossDecisionChange(decision: String) = _uiState.update { it.copy(tossDecision = decision) }
@@ -196,6 +208,14 @@ class CreateMatchViewModel @JvmOverloads constructor(
             return
         }
 
+        val commonPlayer = if (state.hasCommonPlayer) state.commonPlayerName.trim() else ""
+        if (state.hasCommonPlayer && commonPlayer.isEmpty()) {
+            _uiState.update { it.copy(errorMessage = "Please enter the Common Player's name") }
+            return
+        }
+
+        val totalBattersPerTeam = if (state.hasCommonPlayer) effectivePlayers + 1 else effectivePlayers
+
         viewModelScope.launch {
             _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
             try {
@@ -205,9 +225,10 @@ class CreateMatchViewModel @JvmOverloads constructor(
                     teamB = teamB,
                     date = state.date.trim(),
                     totalOvers = effectiveOvers,
-                    playersPerTeam = effectivePlayers,
+                    playersPerTeam = totalBattersPerTeam,
                     tossWinner = actualTossWinner,
-                    tossDecision = state.tossDecision
+                    tossDecision = state.tossDecision,
+                    commonPlayerName = commonPlayer
                 )
 
                 val startedMatch = ScoringEngine.startMatch(

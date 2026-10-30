@@ -37,11 +37,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.igccxi.domain.model.BatterScore
 import com.example.igccxi.ui.theme.CricketGreenPrimary
+import com.example.igccxi.ui.theme.CricketWicketContainer
+import com.example.igccxi.ui.theme.CricketWicketRed
 
 @Composable
 fun BattersScoreCard(
     striker: BatterScore?,
     nonStriker: BatterScore?,
+    lastOutBatter: BatterScore? = null,
     onSwapStrike: () -> Unit
 ) {
     val isLoneBatsman = nonStriker == null || nonStriker.id.isBlank()
@@ -219,6 +222,42 @@ fun BattersScoreCard(
                     strikeRate = nonStriker?.strikeRateFormatted ?: "0.0",
                     isOnStrike = false
                 )
+            }
+
+            if (lastOutBatter != null) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(top = 10.dp, bottom = 8.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(CricketWicketContainer.copy(alpha = 0.45f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 9.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = CricketWicketRed,
+                        modifier = Modifier.padding(end = 6.dp)
+                    ) {
+                        Text(
+                            text = "OUT",
+                            color = Color.White,
+                            fontSize = 8.5.sp,
+                            fontWeight = FontWeight.Black,
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
+                        )
+                    }
+                    Text(
+                        text = "${lastOutBatter.name}  ${lastOutBatter.runs}(${lastOutBatter.ballsFaced})  •  ${lastOutBatter.dismissal}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
     }

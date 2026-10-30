@@ -123,8 +123,21 @@ data class Match(
     val result: String = "",
     val tossWinner: String = "",
     val tossDecision: String = "bat", // "bat" or "bowl"
+    val commonPlayerName: String = "", // Gully Cricket: Common player who bats and bowls for both teams
     val createdAt: Long = System.currentTimeMillis()
 ) {
+    val hasCommonPlayer: Boolean
+        get() = commonPlayerName.trim().isNotEmpty()
+
+    fun isCommonPlayer(name: String?): Boolean {
+        if (name.isNullOrBlank()) return false
+        val cleanName = name.trim()
+        val cmn = commonPlayerName.trim()
+        return (cmn.isNotEmpty() && cleanName.equals(cmn, ignoreCase = true)) ||
+                cleanName.contains("(CMN)", ignoreCase = true) ||
+                cleanName.contains("[CMN]", ignoreCase = true)
+    }
+
     val maxWickets: Int
         get() = maxOf(1, playersPerTeam)
 

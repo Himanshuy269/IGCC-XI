@@ -480,4 +480,53 @@ class ScoringEngineTest {
         // 7 max wickets - 2 wickets fallen = 5 wickets left
         assertEquals("Team 7B won by 5 wickets", result)
     }
+
+    @Test
+    fun testWicketDismissalFormats_autoAttachesBowler() {
+        // match has bowler = "Starc", striker = "Rohit"
+        val mBowled = ScoringEngine.recordWicket(
+            match = match,
+            dismissalDescription = "bowled",
+            newBatterName = "Pant"
+        )
+        val rohitBowled = mBowled.currentInnings.batters.find { it.name == "Rohit" }
+        assertTrue(rohitBowled?.isOut == true)
+        assertEquals("b Starc", rohitBowled?.dismissal)
+
+        val mLbw = ScoringEngine.recordWicket(
+            match = match,
+            dismissalDescription = "lbw",
+            newBatterName = "Pant"
+        )
+        val rohitLbw = mLbw.currentInnings.batters.find { it.name == "Rohit" }
+        assertEquals("lbw b Starc", rohitLbw?.dismissal)
+
+        val mStumped = ScoringEngine.recordWicket(
+            match = match,
+            dismissalDescription = "stumped",
+            newBatterName = "Pant"
+        )
+        val rohitStumped = mStumped.currentInnings.batters.find { it.name == "Rohit" }
+        assertEquals("st b Starc", rohitStumped?.dismissal)
+
+        val mCaught = ScoringEngine.recordWicket(
+            match = match,
+            dismissalDescription = "caught",
+            newBatterName = "Pant"
+        )
+        val rohitCaught = mCaught.currentInnings.batters.find { it.name == "Rohit" }
+        assertEquals("caught b Starc", rohitCaught?.dismissal)
+    }
+
+    @Test
+    fun testWicketDismissal_preservesExplicitDismissalWithFielderAndBowler() {
+        val m1 = ScoringEngine.recordWicket(
+            match = match,
+            dismissalDescription = "c Smith b Starc",
+            newBatterName = "Gill"
+        )
+        val rohit = m1.currentInnings.batters.find { it.name == "Rohit" }
+        assertTrue(rohit?.isOut == true)
+        assertEquals("c Smith b Starc", rohit?.dismissal)
+    }
 }

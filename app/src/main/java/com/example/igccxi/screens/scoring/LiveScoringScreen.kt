@@ -211,6 +211,7 @@ fun LiveScoringScreen(
                 BattersScoreCard(
                     striker = striker,
                     nonStriker = nonStriker,
+                    lastOutBatter = innings.batters.filter { it.isOut }.lastOrNull(),
                     onSwapStrike = { viewModel.swapStrike() }
                 )
 
@@ -380,6 +381,8 @@ fun LiveScoringScreen(
                     existingBatterNames = innings.batters.map { it.name }.filter { it.isNotBlank() },
                     strikerName = striker?.name ?: "Striker",
                     nonStrikerName = nonStriker?.name ?: "",
+                    currentBowlerName = bowler?.name ?: "",
+                    existingBowlerNames = innings.bowlers.map { it.name }.filter { it.isNotBlank() }.distinct(),
                     currentWickets = innings.wickets,
                     maxWickets = match.maxWickets,
                     isBattingAlone = isBattingAlone,

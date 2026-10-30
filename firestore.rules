@@ -23,12 +23,15 @@ rules_version = '2';
 //   - result: string (required, 0-200 chars, e.g. "IGCC won by 4 wickets")
 //   - tossWinner: string (required, 0-100 chars)
 //   - tossDecision: string (required, 0-20 chars, e.g. "bat" or "bowl")
+//   - commonPlayerName: string (optional, 0-100 chars) - Gully cricket common player who plays for both teams
+//   - hasCommonPlayer: bool (optional getter serialization) - True if match has a common player configured
 //   - createdAt: number (required, timestamp in ms, positive integer, immutable)
 //
 // Allowed Optional Serialization Helper Getters:
 //   - currentInnings: map (optional getter serialization)
 //   - isScorable / scorable: bool (optional getter serialization)
 //   - maxWickets: number (optional getter serialization, integer between 1 and 49)
+//   - hasCommonPlayer: bool (optional getter serialization)
 //
 // ---------------------------------------------------------------
 //
@@ -80,7 +83,8 @@ service cloud.firestore {
         'scorerId', 'currentInningsNumber', 'innings1', 'innings2',
         'target', 'result', 'tossWinner', 'tossDecision', 'createdAt',
         'currentInnings', 'isScorable', 'scorable',
-        'playersPerTeam', 'maxWickets'
+        'playersPerTeam', 'maxWickets',
+        'commonPlayerName', 'hasCommonPlayer'
       ]);
     }
 
@@ -112,6 +116,8 @@ service cloud.firestore {
         data.totalOvers is number && data.totalOvers >= 1 && data.totalOvers <= 150 &&
         (!('playersPerTeam' in data) || data.playersPerTeam == null || (data.playersPerTeam is number && data.playersPerTeam >= 2 && data.playersPerTeam <= 50)) &&
         (!('maxWickets' in data) || data.maxWickets == null || (data.maxWickets is number && data.maxWickets >= 1 && data.maxWickets <= 49)) &&
+        (!('commonPlayerName' in data) || (data.commonPlayerName is string && data.commonPlayerName.size() <= 100)) &&
+        (!('hasCommonPlayer' in data) || data.hasCommonPlayer is bool) &&
         data.status is string && data.status in ['NOT_STARTED', 'INNINGS_1', 'INNINGS_BREAK', 'INNINGS_2', 'COMPLETED'] &&
         data.scorerId is string && data.scorerId.size() <= 128 &&
         data.currentInningsNumber is number && (data.currentInningsNumber == 1 || data.currentInningsNumber == 2) &&

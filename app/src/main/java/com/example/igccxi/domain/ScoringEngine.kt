@@ -251,12 +251,23 @@ object ScoringEngine {
         val bowler = current.getCurrentBowler() ?: return match
         val isLoneBatterMode = nonStriker == null || current.currentNonStrikerId.isBlank()
 
+        // Ensure dismissal clearly credits bowler if raw keyword was passed
+        val effectiveBowlerName = bowler.name.trim().ifEmpty { "Bowler" }
+        val formattedDismissal = when (dismissalDescription.trim().lowercase()) {
+            "bowled" -> "b $effectiveBowlerName"
+            "lbw" -> "lbw b $effectiveBowlerName"
+            "caught" -> "caught b $effectiveBowlerName"
+            "stumped" -> "st b $effectiveBowlerName"
+            "hit wicket" -> "hit wicket b $effectiveBowlerName"
+            else -> dismissalDescription.trim()
+        }
+
         // In cricket rules (MCC Law 33-40):
         // Run outs, retired hurt/out, timed out, and obstructing the field are NOT credited to the bowler.
-        val isBowlerWicket = !dismissalDescription.contains("run out", ignoreCase = true) &&
-                !dismissalDescription.contains("retired", ignoreCase = true) &&
-                !dismissalDescription.contains("timed out", ignoreCase = true) &&
-                !dismissalDescription.contains("obstructing", ignoreCase = true)
+        val isBowlerWicket = !formattedDismissal.contains("run out", ignoreCase = true) &&
+                !formattedDismissal.contains("retired", ignoreCase = true) &&
+                !formattedDismissal.contains("timed out", ignoreCase = true) &&
+                !formattedDismissal.contains("obstructing", ignoreCase = true)
 
         val nextBallsInOver = current.ballsBowledInOver + 1
         val isOverComplete = nextBallsInOver >= 6
@@ -291,7 +302,7 @@ object ScoringEngine {
             striker.copy(
                 ballsFaced = striker.ballsFaced + 1,
                 isOut = true,
-                dismissal = dismissalDescription
+                dismissal = formattedDismissal
             )
         } else {
             striker.copy(ballsFaced = striker.ballsFaced + 1)
@@ -300,7 +311,7 @@ object ScoringEngine {
         val updatedNonStriker = if (!isLoneBatterMode && !effectiveStrikerOut) {
             nonStriker?.copy(
                 isOut = true,
-                dismissal = dismissalDescription
+                dismissal = formattedDismissal
             )
         } else {
             nonStriker

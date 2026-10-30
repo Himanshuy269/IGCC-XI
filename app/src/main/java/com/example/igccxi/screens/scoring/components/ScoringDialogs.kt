@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -55,6 +56,8 @@ fun WicketDialog(
     existingBatterNames: List<String> = emptyList(),
     strikerName: String = "",
     nonStrikerName: String = "",
+    currentBowlerName: String = "",
+    existingBowlerNames: List<String> = emptyList(),
     currentWickets: Int = 0,
     maxWickets: Int = 10,
     isBattingAlone: Boolean = false,
@@ -62,11 +65,48 @@ fun WicketDialog(
     onConfirm: (dismissal: String, newBatterName: String, isStrikerOut: Boolean) -> Unit
 ) {
     val commonDismissals = listOf("Bowled", "Caught", "LBW", "Run Out", "Stumped", "Hit Wicket", "Boundary Paar")
-    var selectedDismissal by remember { mutableStateOf("Caught") }
+    var selectedDismissal by remember { mutableStateOf("Bowled") }
+    var bowlerName by remember(currentBowlerName) { mutableStateOf(currentBowlerName.trim()) }
+    var fielderName by remember { mutableStateOf("") }
+    var isCaughtAndBowled by remember { mutableStateOf(false) }
     var isStrikerOut by remember { mutableStateOf(true) }
-    var fielderBowlerDetail by remember { mutableStateOf("") }
     var newBatter by remember { mutableStateOf("") }
     var validationError by remember { mutableStateOf<String?>(null) }
+
+    val effectiveBowler = bowlerName.trim().ifEmpty { currentBowlerName.trim() }
+    val cleanFielder = fielderName.trim()
+
+    val constructedDismissal = when (selectedDismissal) {
+        "Bowled" -> if (effectiveBowler.isNotEmpty()) "b $effectiveBowler" else "bowled"
+        "Caught" -> {
+            when {
+                isCaughtAndBowled -> if (effectiveBowler.isNotEmpty()) "c & b $effectiveBowler" else "c & b"
+                cleanFielder.isNotEmpty() && effectiveBowler.isNotEmpty() -> "c $cleanFielder b $effectiveBowler"
+                cleanFielder.isNotEmpty() -> "c $cleanFielder"
+                effectiveBowler.isNotEmpty() -> "caught b $effectiveBowler"
+                else -> "caught"
+            }
+        }
+        "LBW" -> if (effectiveBowler.isNotEmpty()) "lbw b $effectiveBowler" else "lbw"
+        "Stumped" -> {
+            when {
+                cleanFielder.isNotEmpty() && effectiveBowler.isNotEmpty() -> "st $cleanFielder b $effectiveBowler"
+                cleanFielder.isNotEmpty() -> "st $cleanFielder"
+                effectiveBowler.isNotEmpty() -> "st b $effectiveBowler"
+                else -> "stumped"
+            }
+        }
+        "Hit Wicket" -> if (effectiveBowler.isNotEmpty()) "hit wicket b $effectiveBowler" else "hit wicket"
+        "Run Out" -> {
+            if (cleanFielder.isNotEmpty()) "run out ($cleanFielder)" else "run out"
+        }
+        "Boundary Paar" -> {
+            if (effectiveBowler.isNotEmpty()) "boundary paar (b $effectiveBowler)" else "boundary paar"
+        }
+        else -> {
+            if (effectiveBowler.isNotEmpty()) "${selectedDismissal.lowercase()} b $effectiveBowler" else selectedDismissal.lowercase()
+        }
+    }
 
     val isAllOutWicket = isBattingAlone || (currentWickets + 1 >= maxWickets)
     val isTransitionToLoneBatsman = !isAllOutWicket && (currentWickets + 1 == maxWickets - 1)
@@ -138,10 +178,10 @@ fun WicketDialog(
                     }
                 }
 
-                // If Run Out and 2 batters at crease: allow selecting who was run out
-                if (selectedDismissal.equals("Run Out", ignoreCase = true) && !isBattingAlone && nonStrikerName.isNotBlank()) {
+                // If 2 batters at crease: allow selecting who was dismissed
+                if (!isBattingAlone && nonStrikerName.isNotBlank()) {
                     Text(
-                        text = "Who was Run Out?",
+                        text = if (selectedDismissal.equals("Run Out", ignoreCase = true)) "Who was Run Out?" else "Batsman Dismissed:",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -165,15 +205,85 @@ fun WicketDialog(
                     }
                 }
 
+                val isRunOut = selectedDismissal.equals("Run Out", ignoreCase = true)
                 val isBoundaryPaar = selectedDismissal.equals("Boundary Paar", ignoreCase = true)
-                if (isBoundaryPaar) {
+                val isCaught = selectedDismissal.equals("Caught", ignoreCase = true)
+                val isStumped = selectedDismissal.equals("Stumped", ignoreCase = true)
+
+                // Bowler section (for all dismissals where bowler is credited)
+                if (!isRunOut) {
+                    OutlinedTextField(
+                        value = bowlerName,
+                        onValueChange = { bowlerName = it },
+                        label = { Text("Bowler (Taking Wicket)") },
+                        placeholder = { Text("e.g. Bumrah") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    if (existingBowlerNames.size > 1) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            existingBowlerNames.forEach { bName ->
+                                FilterChip(
+                                    selected = bowlerName.trim().equals(bName.trim(), ignoreCase = true),
+                                    onClick = { bowlerName = bName },
+                                    label = { Text(bName, fontSize = 11.sp) }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (isCaught) {
+                    FilterChip(
+                        selected = isCaughtAndBowled,
+                        onClick = { isCaughtAndBowled = !isCaughtAndBowled },
+                        label = { Text("Caught & Bowled (c & b $effectiveBowler)", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) }
+                    )
+
+                    if (!isCaughtAndBowled) {
+                        OutlinedTextField(
+                            value = fielderName,
+                            onValueChange = { fielderName = it },
+                            label = { Text("Catcher / Fielder Name (Optional)") },
+                            placeholder = { Text("e.g. Kohli") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                } else if (isStumped) {
+                    OutlinedTextField(
+                        value = fielderName,
+                        onValueChange = { fielderName = it },
+                        label = { Text("Wicketkeeper Name (Optional)") },
+                        placeholder = { Text("e.g. Dhoni") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else if (isRunOut) {
+                    OutlinedTextField(
+                        value = fielderName,
+                        onValueChange = { fielderName = it },
+                        label = { Text("Fielder / Thrower (Optional)") },
+                        placeholder = { Text("e.g. Jadeja") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else if (isBoundaryPaar) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "🏏 Gully Rule: Ball hit directly outside or over the boundary wall/fence is OUT! Striker is dismissed.",
+                            text = "🏏 Gully Rule: Ball hit directly outside or over boundary wall is OUT! Wicket credited to $effectiveBowler.",
                             color = MaterialTheme.colorScheme.onTertiaryContainer,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
@@ -182,15 +292,30 @@ fun WicketDialog(
                     }
                 }
 
-                OutlinedTextField(
-                    value = fielderBowlerDetail,
-                    onValueChange = { fielderBowlerDetail = it },
-                    label = { Text(if (isBoundaryPaar) "Note / Detail (Optional)" else "Fielder / Catcher (Optional)") },
-                    placeholder = { Text(if (isBoundaryPaar) "e.g. over the wall / direct out" else "e.g. c Kohli b Bumrah") },
-                    singleLine = true,
+                // Dismissal Live Preview Card
+                Surface(
                     shape = RoundedCornerShape(10.dp),
+                    color = CricketWicketContainer.copy(alpha = 0.35f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, CricketWicketRed.copy(alpha = 0.3f)),
                     modifier = Modifier.fillMaxWidth()
-                )
+                ) {
+                    Column(modifier = Modifier.padding(10.dp)) {
+                        val dismissedName = if (isStrikerOut) strikerName.ifEmpty { "Striker" } else nonStrikerName.ifEmpty { "Non-Striker" }
+                        Text(
+                            text = "🔴 OUT: $dismissedName",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = CricketWicketRed
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Scorecard notation: $constructedDismissal",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
 
                 if (isAllOutWicket) {
                     Surface(
@@ -259,13 +384,9 @@ fun WicketDialog(
                         validationError = "Duplicate player name not allowed in same innings"
                         return@Button
                     }
-                    val fullDismissal = if (fielderBowlerDetail.trim().isNotEmpty())
-                        "${selectedDismissal.lowercase()} (${fielderBowlerDetail.trim()})"
-                    else
-                        selectedDismissal.lowercase()
                     val nextName = if (noNextBatterRequired) "" else cleanName
                     val effectiveOut = if (isBattingAlone) true else isStrikerOut
-                    onConfirm(fullDismissal, nextName, effectiveOut)
+                    onConfirm(constructedDismissal, nextName, effectiveOut)
                 },
                 enabled = !isDuplicate,
                 colors = ButtonDefaults.buttonColors(containerColor = CricketWicketRed),

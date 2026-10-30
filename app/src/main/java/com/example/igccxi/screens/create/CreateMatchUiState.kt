@@ -14,6 +14,8 @@ data class CreateMatchUiState(
     val playersPerTeam: Int = 11,
     val customPlayersText: String = "11",
     val isCustomPlayersSelected: Boolean = false,
+    val hasCommonPlayer: Boolean = false,
+    val commonPlayerName: String = "",
     val isTeamAWonToss: Boolean = true,
     val tossDecision: String = "bat", // "bat" or "bowl"
     val strikerName: String = "Striker 1",
