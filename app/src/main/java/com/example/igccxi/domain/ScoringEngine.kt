@@ -253,7 +253,8 @@ object ScoringEngine {
 
         // Ensure dismissal clearly credits bowler if raw keyword was passed
         val effectiveBowlerName = bowler.name.trim().ifEmpty { "Bowler" }
-        val formattedDismissal = when (dismissalDescription.trim().lowercase()) {
+        val formattedDismissal = when (val raw = dismissalDescription.trim().lowercase()) {
+            "", "out" -> "out b $effectiveBowlerName"
             "bowled" -> "b $effectiveBowlerName"
             "lbw" -> "lbw b $effectiveBowlerName"
             "caught" -> "caught b $effectiveBowlerName"

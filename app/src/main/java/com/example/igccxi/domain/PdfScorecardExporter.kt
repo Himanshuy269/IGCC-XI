@@ -343,57 +343,91 @@ object PdfScorecardExporter {
 
         y += tableHeaderHeight + 2f
 
-        // 3. Batters Rows
-        val rowHeight = 17f
+        // 3. Batters Rows — 2-line rows for dismissed batters (name + dismissal detail)
         paint.textSize = 8.5f
 
         for ((index, b) in innings.batters.withIndex()) {
             val isStriker = b.id == innings.currentStrikerId
+            val isNonStriker = b.id == innings.currentNonStrikerId
+            val isAtCrease = isStriker || isNonStriker
             val isEven = index % 2 == 0
+
+            // Determine if batter is out: explicitly marked out OR has dismissal OR is not at crease after facing balls
+            val isBatterOut = b.isOut || (b.dismissal.isNotEmpty() && !b.dismissal.equals("not out", ignoreCase = true)) || (!isAtCrease && b.ballsFaced > 0)
+
+            val dismissalText = if (isBatterOut) {
+                b.dismissal.ifEmpty { "out" }
+            } else if (isAtCrease) {
+                if (isStriker) "not out *" else "not out"
+            } else {
+                "yet to bat"
+            }
+
+            // Taller row for dismissed batters so dismissal detail fits on 2 lines
+            val rowHeight = if (isBatterOut) 26f else 17f
 
             // Row background
             paint.color = if (isEven) COLOR_ROW_WHITE else COLOR_ROW_ALT
             paint.style = Paint.Style.FILL
             canvas.drawRect(LEFT_MARGIN, y, RIGHT_MARGIN, y + rowHeight, paint)
 
-            // Batter Name (Bold)
+            // Red left stripe for dismissed batters
+            if (isBatterOut) {
+                paint.color = COLOR_OUT_RED
+                canvas.drawRect(LEFT_MARGIN, y, LEFT_MARGIN + 3f, y + rowHeight, paint)
+            }
+
+            // Batter Name
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             paint.textAlign = Paint.Align.LEFT
-            paint.color = COLOR_TEXT_MAIN
-            val displayName = if (isStriker) "${b.name} *" else b.name
-            drawEllipsizedText(canvas, displayName, colBatterX, y + 12f, 115f, paint)
+            paint.color = if (isBatterOut) COLOR_OUT_RED else COLOR_TEXT_MAIN
+            val displayName = when {
+                isStriker -> "${b.name} ★"
+                isBatterOut -> b.name
+                else      -> b.name
+            }
+            val nameY = if (isBatterOut) y + 10f else y + 12f
+            drawEllipsizedText(canvas, displayName, colBatterX + 5f, nameY, 118f, paint)
 
-            // Dismissal / How Out (Clear distinction: Out with bowler, Not out, Yet to bat)
+            // Dismissal line
             paint.textAlign = Paint.Align.LEFT
-            if (b.isOut) {
+            paint.textSize = 8.5f
+            if (isBatterOut) {
+                // Line 1: dismissal type in red  e.g. "c Patel b Sharma"
                 paint.color = COLOR_OUT_RED
-                paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-                val outText = b.dismissal.ifEmpty { "out" }
-                drawEllipsizedText(canvas, outText, colDismissalX, y + 12f, 215f, paint)
-            } else if (b.ballsFaced > 0 || isStriker || b.id == innings.currentNonStrikerId) {
+                paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD_ITALIC)
+                paint.textSize = 8f
+                drawEllipsizedText(canvas, dismissalText, colDismissalX, nameY, 210f, paint)
+
+                // Line 2: small "OUT" badge text below, same column
+                paint.color = Color.parseColor("#991B1B")
+                paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                paint.textSize = 7f
+                canvas.drawText("✕ DISMISSED", colDismissalX, nameY + 11f, paint)
+            } else if (isAtCrease) {
                 paint.color = COLOR_NOT_OUT_GREEN
                 paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD_ITALIC)
-                canvas.drawText("not out", colDismissalX, y + 12f, paint)
+                canvas.drawText(dismissalText, colDismissalX, y + 12f, paint)
             } else {
                 paint.color = COLOR_TEXT_LIGHT
                 paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.ITALIC)
                 canvas.drawText("yet to bat", colDismissalX, y + 12f, paint)
             }
 
-            // Stats Columns (Strictly Right-Aligned)
+            // Stats Columns (right-aligned, vertically centered in row)
+            val statsY = y + (rowHeight / 2f) + 3.5f
+            paint.textSize = 8.5f
             paint.textAlign = Paint.Align.RIGHT
-            paint.color = COLOR_TEXT_MAIN
+            paint.color = if (b.isOut) COLOR_TEXT_MUTED else COLOR_TEXT_MAIN
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            canvas.drawText("${b.runs}", colRunsX, y + 12f, paint)
+            canvas.drawText("${b.runs}", colRunsX, statsY, paint)
 
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
             paint.color = COLOR_TEXT_MUTED
-            canvas.drawText("${b.ballsFaced}", colBallsX, y + 12f, paint)
-            canvas.drawText("${b.fours}", colFoursX, y + 12f, paint)
-            canvas.drawText("${b.sixes}", colSixesX, y + 12f, paint)
-
-            paint.color = COLOR_TEXT_MUTED
-            canvas.drawText(b.strikeRateFormatted, colSrX, y + 12f, paint)
+            canvas.drawText("${b.ballsFaced}", colBallsX, statsY, paint)
+            canvas.drawText("${b.fours}", colFoursX, statsY, paint)
+            canvas.drawText("${b.sixes}", colSixesX, statsY, paint)
+            canvas.drawText(b.strikeRateFormatted, colSrX, statsY, paint)
 
             // Row Bottom Divider
             paint.color = COLOR_DIVIDER
@@ -471,13 +505,14 @@ object PdfScorecardExporter {
 
         // 7. Bowlers Rows
         paint.textSize = 8.5f
+        val bowlerRowHeight = 17f
         for ((index, bw) in innings.bowlers.withIndex()) {
             val isEven = index % 2 == 0
 
             // Row background
             paint.color = if (isEven) COLOR_ROW_WHITE else COLOR_ROW_ALT
             paint.style = Paint.Style.FILL
-            canvas.drawRect(LEFT_MARGIN, y, RIGHT_MARGIN, y + rowHeight, paint)
+            canvas.drawRect(LEFT_MARGIN, y, RIGHT_MARGIN, y + bowlerRowHeight, paint)
 
             // Bowler Name
             paint.textAlign = Paint.Align.LEFT
@@ -507,10 +542,10 @@ object PdfScorecardExporter {
             paint.color = COLOR_DIVIDER
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = 0.5f
-            canvas.drawLine(LEFT_MARGIN, y + rowHeight, RIGHT_MARGIN, y + rowHeight, paint)
+            canvas.drawLine(LEFT_MARGIN, y + bowlerRowHeight, RIGHT_MARGIN, y + bowlerRowHeight, paint)
             paint.style = Paint.Style.FILL
 
-            y += rowHeight
+            y += bowlerRowHeight
         }
 
         return y + 10f

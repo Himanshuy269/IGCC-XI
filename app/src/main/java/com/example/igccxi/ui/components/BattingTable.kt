@@ -122,6 +122,8 @@ fun BattingTable(
             innings.batters.forEach { batter ->
                 val isStriker = batter.id == innings.currentStrikerId
                 val isNonStriker = batter.id == innings.currentNonStrikerId
+                val isAtCrease = isStriker || isNonStriker
+                val isBatterOut = batter.isOut || (batter.dismissal.isNotEmpty() && !batter.dismissal.equals("not out", ignoreCase = true)) || (!isAtCrease && batter.ballsFaced > 0)
 
                 Row(
                     modifier = Modifier
@@ -133,14 +135,14 @@ fun BattingTable(
                         Text(
                             text = if (isStriker) "${batter.name} *" else batter.name,
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = if (isStriker || isNonStriker) FontWeight.Bold else FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = if (isAtCrease) FontWeight.Bold else FontWeight.SemiBold,
+                            color = if (isBatterOut) Color(0xFFDC2626) else MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
 
                         // Status / Dismissal line
-                        if (batter.isOut) {
+                        if (isBatterOut) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.padding(top = 2.dp)
@@ -161,8 +163,8 @@ fun BattingTable(
                                 Text(
                                     text = batter.dismissal.ifEmpty { "out" },
                                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFFDC2626),
+                                    fontWeight = FontWeight.Bold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
