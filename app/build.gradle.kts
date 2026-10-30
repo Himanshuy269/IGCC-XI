@@ -59,6 +59,18 @@ android {
     buildFeatures {
         compose = true
     }
+
+    // Rename output APK to app name instead of default "app-release.apk"
+    applicationVariants.all {
+        val variant = this
+        variant.outputs
+            .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
+            .forEach { output ->
+                if (variant.buildType.name == "release") {
+                    output.outputFileName = "IGCC-XI-v${vName}.apk"
+                }
+            }
+    }
 }
 
 dependencies {

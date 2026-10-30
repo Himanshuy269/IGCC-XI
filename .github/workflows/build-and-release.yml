@@ -110,7 +110,7 @@ jobs:
         id: metadata
         run: |
           mkdir -p release_artifacts
-          cp app/build/outputs/apk/release/app-release.apk release_artifacts/IGCC-XI.apk
+          cp app/build/outputs/apk/release/IGCC-XI-v${{ steps.versioning.outputs.VERSION_NAME }}.apk release_artifacts/IGCC-XI.apk
 
           FILE_SIZE=$(wc -c < release_artifacts/IGCC-XI.apk | tr -d ' ')
           DATE=$(date +'%Y-%m-%d')
