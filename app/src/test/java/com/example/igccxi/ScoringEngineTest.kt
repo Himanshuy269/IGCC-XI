@@ -550,4 +550,40 @@ class ScoringEngineTest {
         assertEquals(1, fow1.wicketNumber)
         assertEquals("0.2", fow1.oversFormatted)
     }
+
+    @Test
+    fun testOneOverMatchWithWidesAndNoBalls_staysInOneOver() {
+        // Setup 1 over match
+        val oneOverMatch = match.copy(totalOvers = 1)
+        var current = oneOverMatch
+
+        // Ball 1: No ball (0 runs off bat)
+        current = ScoringEngine.recordNoBall(current, runsOffBat = 0)
+        // Ball 2: Dot
+        current = ScoringEngine.recordRuns(current, 0)
+        // Ball 3: Wide (1 run)
+        current = ScoringEngine.recordWide(current, extraRuns = 1)
+        // Ball 4: 1 run
+        current = ScoringEngine.recordRuns(current, 1)
+        // Ball 5: 2 runs
+        current = ScoringEngine.recordRuns(current, 2)
+        // Ball 6: 4 runs
+        current = ScoringEngine.recordRuns(current, 4)
+        // Ball 7: 3 runs
+        current = ScoringEngine.recordRuns(current, 3)
+        // Ball 8: Dot (final legal ball)
+        current = ScoringEngine.recordRuns(current, 0)
+
+        val inn = current.innings1
+        assertEquals(8, inn.recentBalls.size)
+        assertEquals(1, inn.oversBowled)
+        assertEquals(0, inn.ballsBowledInOver)
+
+        // Verify groupBallsIntoOvers keeps all 8 deliveries in Over 1!
+        val overs = com.example.igccxi.ui.components.groupBallsIntoOvers(inn)
+        assertEquals(1, overs.size)
+        val over1 = overs[0]
+        assertEquals(1, over1.overNumber)
+        assertEquals(8, over1.balls.size)
+    }
 }

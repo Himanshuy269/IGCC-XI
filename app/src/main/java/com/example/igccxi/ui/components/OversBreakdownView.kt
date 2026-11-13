@@ -64,7 +64,7 @@ fun groupBallsIntoOvers(innings: Innings): List<OverSummary> {
 
     for (ball in innings.recentBalls) {
         currentBalls.add(ball)
-        if (ball.isLegalBall) {
+        if (ball.isActuallyLegalBall) {
             legalCount++
             if (legalCount == 6) {
                 overs.add(buildOverSummary(currentOverNumber, currentBalls, innings))

@@ -558,14 +558,14 @@ object ScoringEngine {
     ): BowlerScore {
         val ballsInOver = mutableListOf<BallEvent>()
         ballsInOver.add(lastBallEvent)
-        var legalCount = if (lastBallEvent.isLegalBall) 1 else 0
+        var legalCount = if (lastBallEvent.isActuallyLegalBall) 1 else 0
 
         for (i in currentRecentBalls.indices.reversed()) {
             if (legalCount >= 6) break
             val b = currentRecentBalls[i]
             if (b.bowlerId == bowler.id) {
                 ballsInOver.add(b)
-                if (b.isLegalBall) {
+                if (b.isActuallyLegalBall) {
                     legalCount++
                 }
             }

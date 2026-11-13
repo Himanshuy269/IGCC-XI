@@ -22,7 +22,10 @@ data class BallEvent(
     val bowlerId: String = "",
     val displayText: String = "",
     val timestamp: Long = System.currentTimeMillis()
-)
+) {
+    val isActuallyLegalBall: Boolean
+        get() = type != BallType.WIDE && type != BallType.NO_BALL && isLegalBall
+}
 
 data class FallOfWicket(
     val batterId: String = "",
@@ -129,7 +132,7 @@ data class Innings(
 
         for (ball in recentBalls) {
             runningRuns += ball.runsOffBat + ball.extraRuns
-            if (ball.isLegalBall) legalBalls++
+            if (ball.isActuallyLegalBall) legalBalls++
             if (ball.isWicket) {
                 wktCount++
                 val bName = batters.find { it.id == ball.batterId }?.name ?: "Batter $wktCount"
