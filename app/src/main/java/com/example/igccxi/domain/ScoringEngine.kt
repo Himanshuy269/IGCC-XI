@@ -4,6 +4,7 @@ import com.example.igccxi.domain.model.BallEvent
 import com.example.igccxi.domain.model.BallType
 import com.example.igccxi.domain.model.BatterScore
 import com.example.igccxi.domain.model.BowlerScore
+import com.example.igccxi.domain.model.FallOfWicket
 import com.example.igccxi.domain.model.Innings
 import com.example.igccxi.domain.model.Match
 import com.example.igccxi.domain.model.MatchStatus
@@ -254,7 +255,7 @@ object ScoringEngine {
         // Ensure dismissal clearly credits bowler if raw keyword was passed
         val effectiveBowlerName = bowler.name.trim().ifEmpty { "Bowler" }
         val formattedDismissal = when (val raw = dismissalDescription.trim().lowercase()) {
-            "", "out" -> "out b $effectiveBowlerName"
+            "", "out" -> "b $effectiveBowlerName"
             "bowled" -> "b $effectiveBowlerName"
             "lbw" -> "lbw b $effectiveBowlerName"
             "caught" -> "caught b $effectiveBowlerName"
@@ -376,6 +377,17 @@ object ScoringEngine {
             nextNonStrikerId = temp
         }
 
+        // Fall of Wicket entry
+        val dismissedBatter = if (effectiveStrikerOut) updatedStriker else (updatedNonStriker ?: updatedStriker)
+        val ballOverFormatted = if (isOverComplete) "${current.oversBowled + 1}.0" else "${current.oversBowled}.$nextBallsInOver"
+        val fow = FallOfWicket(
+            batterId = dismissedBatter.id,
+            batterName = dismissedBatter.name,
+            score = current.totalRuns,
+            wicketNumber = nextWickets,
+            oversFormatted = ballOverFormatted
+        )
+
         val updatedInnings = current.copy(
             wickets = nextWickets,
             oversBowled = if (isOverComplete) current.oversBowled + 1 else current.oversBowled,
@@ -384,7 +396,8 @@ object ScoringEngine {
             bowlers = current.bowlers.map { if (it.id == updatedBowler.id) updatedBowler else it },
             currentStrikerId = nextStrikerId,
             currentNonStrikerId = nextNonStrikerId,
-            recentBalls = current.recentBalls + ballEvent
+            recentBalls = current.recentBalls + ballEvent,
+            fallOfWickets = current.fallOfWickets + fow
         )
 
         return finalizeBall(match, updatedInnings)

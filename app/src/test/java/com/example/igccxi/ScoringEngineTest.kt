@@ -529,4 +529,25 @@ class ScoringEngineTest {
         assertTrue(rohit?.isOut == true)
         assertEquals("c Smith b Starc", rohit?.dismissal)
     }
+
+    @Test
+    fun testRecordWicket_recordsFallOfWicketsCorrectly() {
+        // Rohit on strike, scores 4 runs
+        var current = ScoringEngine.recordRuns(match, 4)
+        // Ball 2: Wicket! Rohit caught by Smith off Starc
+        current = ScoringEngine.recordWicket(
+            match = current,
+            dismissalDescription = "c Smith b Starc",
+            newBatterName = "Pant",
+            isStrikerOut = true
+        )
+
+        val fowList = current.currentInnings.fallOfWickets
+        assertEquals(1, fowList.size)
+        val fow1 = fowList[0]
+        assertEquals("Rohit", fow1.batterName)
+        assertEquals(4, fow1.score)
+        assertEquals(1, fow1.wicketNumber)
+        assertEquals("0.2", fow1.oversFormatted)
+    }
 }

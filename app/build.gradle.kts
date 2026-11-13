@@ -4,8 +4,8 @@ plugins {
     alias(libs.plugins.google.services)
 }
 
-val vCode = project.findProperty("versionCode")?.toString()?.toIntOrNull() ?: 10304
-val vName = project.findProperty("versionName")?.toString() ?: "1.3.4"
+val vCode = project.findProperty("versionCode")?.toString()?.toIntOrNull() ?: 10305
+val vName = project.findProperty("versionName")?.toString() ?: "1.3.5"
 
 android {
     namespace = "com.example.igccxi"

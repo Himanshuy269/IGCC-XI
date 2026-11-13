@@ -24,6 +24,14 @@ data class BallEvent(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+data class FallOfWicket(
+    val batterId: String = "",
+    val batterName: String = "",
+    val score: Int = 0,
+    val wicketNumber: Int = 0,
+    val oversFormatted: String = ""
+)
+
 data class Extras(
     val wides: Int = 0,
     val noBalls: Int = 0,
@@ -88,7 +96,8 @@ data class Innings(
     val batters: List<BatterScore> = emptyList(),
     val bowlers: List<BowlerScore> = emptyList(),
     val extras: Extras = Extras(),
-    val recentBalls: List<BallEvent> = emptyList() // recent balls for ticker & undo
+    val recentBalls: List<BallEvent> = emptyList(), // recent balls for ticker & undo
+    val fallOfWickets: List<FallOfWicket> = emptyList()
 ) {
     val totalLegalBalls: Int
         get() = (oversBowled * 6) + ballsBowledInOver
@@ -105,6 +114,54 @@ data class Innings(
     fun getStriker(): BatterScore? = batters.find { it.id == currentStrikerId }
     fun getNonStriker(): BatterScore? = batters.find { it.id == currentNonStrikerId }
     fun getCurrentBowler(): BowlerScore? = bowlers.find { it.id == currentBowlerId }
+
+    /**
+     * Returns fall of wickets recorded, or reconstructs from recent balls / out batters as fallback.
+     */
+    fun getEffectiveFallOfWickets(): List<FallOfWicket> {
+        if (fallOfWickets.isNotEmpty()) return fallOfWickets
+
+        // Fallback reconstruction from recentBalls if match was scored prior to fallOfWickets tracking
+        val reconstructed = mutableListOf<FallOfWicket>()
+        var runningRuns = 0
+        var wktCount = 0
+        var legalBalls = 0
+
+        for (ball in recentBalls) {
+            runningRuns += ball.runsOffBat + ball.extraRuns
+            if (ball.isLegalBall) legalBalls++
+            if (ball.isWicket) {
+                wktCount++
+                val bName = batters.find { it.id == ball.batterId }?.name ?: "Batter $wktCount"
+                val ov = legalBalls / 6
+                val bl = legalBalls % 6
+                val ovStr = if (bl == 0) "$ov.0" else "$ov.$bl"
+                reconstructed.add(
+                    FallOfWicket(
+                        batterId = ball.batterId,
+                        batterName = bName,
+                        score = runningRuns,
+                        wicketNumber = wktCount,
+                        oversFormatted = ovStr
+                    )
+                )
+            }
+        }
+
+        if (reconstructed.isNotEmpty()) return reconstructed
+
+        // Secondary fallback from batters with isOut=true
+        val outBatters = batters.filter { it.isOut }
+        return outBatters.mapIndexed { idx, b ->
+            FallOfWicket(
+                batterId = b.id,
+                batterName = b.name,
+                score = b.runs,
+                wicketNumber = idx + 1,
+                oversFormatted = "-"
+            )
+        }
+    }
 }
 
 data class Match(

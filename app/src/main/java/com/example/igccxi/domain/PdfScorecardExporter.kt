@@ -5,13 +5,11 @@ import android.content.Intent
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import androidx.core.content.FileProvider
 import com.example.igccxi.domain.model.Innings
 import com.example.igccxi.domain.model.Match
-import com.example.igccxi.domain.model.MatchStatus
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -22,25 +20,18 @@ object PdfScorecardExporter {
 
     private const val PAGE_WIDTH = 595
     private const val PAGE_HEIGHT = 842
-    private const val LEFT_MARGIN = 28f
-    private const val RIGHT_MARGIN = 567f
-    private const val CONTENT_WIDTH = RIGHT_MARGIN - LEFT_MARGIN // 539f
+    private const val LEFT_MARGIN = 24f
+    private const val RIGHT_MARGIN = 571f
 
-    // Theme Colors
-    private val COLOR_PRIMARY_DARK = Color.parseColor("#0F3B20")
-    private val COLOR_PRIMARY = Color.parseColor("#1B5E20")
-    private val COLOR_PRIMARY_LIGHT = Color.parseColor("#E8F5E9")
-    private val COLOR_PRIMARY_BORDER = Color.parseColor("#A5D6A7")
-    private val COLOR_GOLD = Color.parseColor("#D4AF37")
-    private val COLOR_TEXT_MAIN = Color.parseColor("#0F172A")
-    private val COLOR_TEXT_MUTED = Color.parseColor("#475569")
-    private val COLOR_TEXT_LIGHT = Color.parseColor("#94A3B8")
-    private val COLOR_OUT_RED = Color.parseColor("#B91C1C")
-    private val COLOR_NOT_OUT_GREEN = Color.parseColor("#15803D")
-    private val COLOR_HEADER_BG = Color.parseColor("#1E293B")
-    private val COLOR_ROW_ALT = Color.parseColor("#F8FAFC")
-    private val COLOR_ROW_WHITE = Color.WHITE
-    private val COLOR_DIVIDER = Color.parseColor("#E2E8F0")
+    // Clean Design Colors matching the official cricket scorecard UI
+    private val COLOR_DARK_GREEN = Color.parseColor("#155D27")  // Innings bar background
+    private val COLOR_SAGE_GREEN = Color.parseColor("#85A885")  // Table header bar
+    private val COLOR_HEADER_TEXT = Color.parseColor("#111111")
+    private val COLOR_TEXT_MAIN = Color.parseColor("#111111")
+    private val COLOR_TEXT_MUTED = Color.parseColor("#555555")
+    private val COLOR_TEXT_LIGHT = Color.parseColor("#777777")
+    private val COLOR_DIVIDER = Color.parseColor("#D1D5DB")
+    private val COLOR_TOP_LINE = Color.parseColor("#333333")
 
     fun generateAndSharePdf(context: Context, match: Match): File? {
         val pdfFile = generatePdf(context, match) ?: return null
@@ -59,8 +50,8 @@ object PdfScorecardExporter {
         val shareIntent = Intent(Intent.ACTION_SEND).apply {
             type = "application/pdf"
             putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, "Scorecard: ${match.teamA} vs ${match.teamB}")
-            putExtra(Intent.EXTRA_TEXT, "Scorecard for ${match.teamA} vs ${match.teamB} (${match.date})\nResult: ${match.result}")
+            putExtra(Intent.EXTRA_SUBJECT, "Scorecard: ${match.teamA} v/s ${match.teamB}")
+            putExtra(Intent.EXTRA_TEXT, "Scorecard: ${match.teamA} v/s ${match.teamB} (${match.date})\nResult: ${match.result}")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
@@ -79,50 +70,36 @@ object PdfScorecardExporter {
 
         val paint = Paint().apply { isAntiAlias = true }
 
-        // ================= PAGE 1 =================
+        // ================= PAGE 1: INNINGS 1 =================
         val pageInfo1 = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 1).create()
         val page1 = document.startPage(pageInfo1)
         val canvas1 = page1.canvas
 
-        // 1. Header Banner
-        var y1 = drawHeaderBanner(canvas1, paint, match, isCompact = false)
+        // 1. Clean Match Header
+        var y1 = drawMatchHeader(canvas1, paint, match)
 
-        // 2. Match Info & Result Card
-        y1 = drawMatchInfoCard(canvas1, paint, match, y1)
+        // 2. Innings 1 Section (Full Scorecard)
+        drawInningsSection(canvas1, paint, match.innings1, y1)
 
-        // 3. Innings 1 Section
-        val innings1Title = if (hasSecondInnings) "1ST INNINGS" else "MATCH INNINGS"
-        drawInningsSection(canvas1, paint, match.innings1, innings1Title, y1)
-
-        // 4. Footer
+        // 3. Footer
         drawPageFooter(canvas1, paint, 1, totalPages)
 
         document.finishPage(page1)
 
-        // ================= PAGE 2 (If Second Innings exists) =================
+        // ================= PAGE 2: INNINGS 2 (If exists) =================
         val innings2 = match.innings2
         if (innings2 != null) {
             val pageInfo2 = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 2).create()
             val page2 = document.startPage(pageInfo2)
             val canvas2 = page2.canvas
 
-            // Compact Header
-            var y2 = drawHeaderBanner(canvas2, paint, match, isCompact = true)
+            // 1. Clean Match Header
+            var y2 = drawMatchHeader(canvas2, paint, match)
 
-            // Target banner if chasing
-            if (match.target != null) {
-                y2 = drawChaseTargetBanner(canvas2, paint, match, y2)
-            }
+            // 2. Innings 2 Section (Full Scorecard)
+            drawInningsSection(canvas2, paint, innings2, y2)
 
-            // Innings 2 Section
-            y2 = drawInningsSection(canvas2, paint, innings2, "2ND INNINGS (CHASE)", y2)
-
-            // Final Result Card (large prominent finish)
-            if (match.result.isNotEmpty()) {
-                drawFinalResultCard(canvas2, paint, match, y2 + 8f)
-            }
-
-            // Footer
+            // 3. Footer
             drawPageFooter(canvas2, paint, 2, totalPages)
 
             document.finishPage(page2)
@@ -144,401 +121,283 @@ object PdfScorecardExporter {
         }
     }
 
-    private fun drawHeaderBanner(
+    /**
+     * Draws the clean header:
+     * -----------------------------
+     *       Team A v/s Team B
+     * -----------------------------
+     * Match Result (or overs/date)
+     */
+    private fun drawMatchHeader(
         canvas: Canvas,
         paint: Paint,
-        match: Match,
-        isCompact: Boolean
+        match: Match
     ): Float {
-        val bannerHeight = if (isCompact) 50f else 66f
+        var y = 22f
 
-        // Deep cricket green background
-        paint.color = COLOR_PRIMARY_DARK
-        paint.style = Paint.Style.FILL
-        canvas.drawRect(0f, 0f, PAGE_WIDTH.toFloat(), bannerHeight, paint)
-
-        // Gold bottom accent line
-        paint.color = COLOR_GOLD
-        canvas.drawRect(0f, bannerHeight, PAGE_WIDTH.toFloat(), bannerHeight + 3f, paint)
-
-        // Main Title
-        paint.color = Color.WHITE
-        paint.textAlign = Paint.Align.LEFT
-        paint.textSize = if (isCompact) 14f else 18f
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        val title = if (isCompact) "CRICKET MATCH SCORECARD • 2ND INNINGS" else "CRICKET MATCH SCORECARD"
-        canvas.drawText(title, LEFT_MARGIN, if (isCompact) 28f else 32f, paint)
-
-        // Subtitle
-        paint.textSize = 9.5f
-        paint.color = Color.parseColor("#E2E8F0")
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-        val subtitle = "${match.teamA} vs ${match.teamB} • ${match.date} • IGCC XI Live Cricket"
-        canvas.drawText(subtitle, LEFT_MARGIN, if (isCompact) 42f else 52f, paint)
-
-        // Right side badge
-        paint.textAlign = Paint.Align.RIGHT
-        paint.color = COLOR_GOLD
-        paint.textSize = 9f
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        canvas.drawText("OFFICIAL MATCH REPORT", RIGHT_MARGIN, if (isCompact) 32f else 36f, paint)
-
-        return bannerHeight + 14f
-    }
-
-    private fun drawMatchInfoCard(
-        canvas: Canvas,
-        paint: Paint,
-        match: Match,
-        startY: Float
-    ): Float {
-        var y = startY
-        val cardHeight = if (match.result.isNotEmpty()) 74f else 54f
-        val cardRect = RectF(LEFT_MARGIN, y, RIGHT_MARGIN, y + cardHeight)
-
-        // Card Background & Border
-        paint.color = Color.parseColor("#F8FAFC")
-        paint.style = Paint.Style.FILL
-        canvas.drawRoundRect(cardRect, 10f, 10f, paint)
-
-        paint.color = COLOR_DIVIDER
+        // Top horizontal divider
+        paint.color = COLOR_TOP_LINE
         paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 1f
-        canvas.drawRoundRect(cardRect, 10f, 10f, paint)
+        paint.strokeWidth = 0.8f
+        canvas.drawLine(LEFT_MARGIN, y, RIGHT_MARGIN, y, paint)
         paint.style = Paint.Style.FILL
 
-        // Teams Matchup
-        paint.textAlign = Paint.Align.LEFT
+        y += 18f
+
+        // Match Title: "Team A v/s Team B" (Centered, Bold)
         paint.color = COLOR_TEXT_MAIN
-        paint.textSize = 13f
+        paint.textAlign = Paint.Align.CENTER
+        paint.textSize = 17f
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        canvas.drawText("${match.teamA}  vs  ${match.teamB}", LEFT_MARGIN + 12f, y + 20f, paint)
+        val title = "${match.teamA} v/s ${match.teamB}"
+        val centerX = (LEFT_MARGIN + RIGHT_MARGIN) / 2f
+        canvas.drawText(title, centerX, y, paint)
 
-        // Overs & Players Info
-        paint.textAlign = Paint.Align.RIGHT
-        paint.color = COLOR_TEXT_MUTED
-        paint.textSize = 9f
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-        val playerSideText = if (match.playersPerTeam != 11) "${match.playersPerTeam} players per side (${match.maxWickets} wkts)" else "11 players per side"
-        canvas.drawText("${match.totalOvers} Overs Match  •  $playerSideText", RIGHT_MARGIN - 12f, y + 20f, paint)
+        y += 7f
 
-        // Toss & Common Player details
-        paint.textAlign = Paint.Align.LEFT
-        paint.color = COLOR_TEXT_MUTED
-        paint.textSize = 8.5f
-        val tossInfo = if (match.tossWinner.isNotEmpty()) "Toss: ${match.tossWinner} opted to ${match.tossDecision}" else "Toss: N/A"
-        val commonInfo = if (match.hasCommonPlayer) "  •  Common Player: ${match.commonPlayerName}" else ""
-        canvas.drawText("$tossInfo$commonInfo", LEFT_MARGIN + 12f, y + 36f, paint)
-
-        // Result Banner (if completed)
-        if (match.result.isNotEmpty()) {
-            val resultRect = RectF(LEFT_MARGIN + 10f, y + 46f, RIGHT_MARGIN - 10f, y + 66f)
-            paint.color = COLOR_PRIMARY_LIGHT
-            canvas.drawRoundRect(resultRect, 6f, 6f, paint)
-
-            paint.color = COLOR_PRIMARY_BORDER
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = 1f
-            canvas.drawRoundRect(resultRect, 6f, 6f, paint)
-            paint.style = Paint.Style.FILL
-
-            paint.color = COLOR_PRIMARY
-            paint.textSize = 9.5f
-            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            paint.textAlign = Paint.Align.LEFT
-            canvas.drawText("🏆 RESULT: ${match.result.uppercase()}", LEFT_MARGIN + 20f, y + 60f, paint)
-        }
-
-        return y + cardHeight + 12f
-    }
-
-    private fun drawChaseTargetBanner(
-        canvas: Canvas,
-        paint: Paint,
-        match: Match,
-        startY: Float
-    ): Float {
-        val y = startY
-        val target = match.target ?: return y
-        val rect = RectF(LEFT_MARGIN, y, RIGHT_MARGIN, y + 24f)
-
-        paint.color = Color.parseColor("#EFF6FF")
-        paint.style = Paint.Style.FILL
-        canvas.drawRoundRect(rect, 6f, 6f, paint)
-
-        paint.color = Color.parseColor("#BFDBFE")
+        // Bottom horizontal divider under title
+        paint.color = COLOR_TOP_LINE
         paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 1f
-        canvas.drawRoundRect(rect, 6f, 6f, paint)
+        paint.strokeWidth = 0.8f
+        canvas.drawLine(LEFT_MARGIN, y, RIGHT_MARGIN, y, paint)
         paint.style = Paint.Style.FILL
 
-        paint.color = Color.parseColor("#1D4ED8")
-        paint.textSize = 9.5f
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        paint.textAlign = Paint.Align.LEFT
-        val targetText = "TARGET: $target RUNS (Needs $target runs to win from ${match.totalOvers} overs)"
-        canvas.drawText(targetText, LEFT_MARGIN + 12f, y + 16f, paint)
+        y += 13f
 
-        return y + 32f
+        // Result Subtitle on left (e.g. "Junior won by 12 runs.")
+        paint.textAlign = Paint.Align.LEFT
+        paint.textSize = 9f
+        paint.color = COLOR_TEXT_MAIN
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+
+        val resultText = if (match.result.isNotBlank()) {
+            val res = match.result.trim()
+            if (res.endsWith(".")) res else "$res."
+        } else {
+            val toss = if (match.tossWinner.isNotBlank()) "Toss: ${match.tossWinner} chose to ${match.tossDecision}" else ""
+            "${match.totalOvers} Overs Match • ${match.date} ${if (toss.isNotEmpty()) "• $toss" else ""}"
+        }
+        canvas.drawText(resultText, LEFT_MARGIN, y, paint)
+
+        return y + 9f
     }
 
+    /**
+     * Draws a complete Innings section:
+     * - Dark green banner: [Team Name] [Score-Wickets (Overs)]
+     * - Batsman Table: Batsman, R, B, 4s, 6s, SR with 2-line rows (Name + Dismissal)
+     * - Extras row: Extras (total) b B, lb LB, wd WD, nb NB, 0 P
+     * - Total row: Total Score-Wickets (Overs) CRR
+     * - Bowler Table: Bowler, O, M, R, W, ER
+     * - Fall of wickets Table: Fall of wickets, Score, Over
+     */
     private fun drawInningsSection(
         canvas: Canvas,
         paint: Paint,
         innings: Innings,
-        inningsLabel: String,
         startY: Float
     ): Float {
         var y = startY
 
-        // 1. Innings Header Pill / Bar
-        val headerHeight = 26f
-        val headerRect = RectF(LEFT_MARGIN, y, RIGHT_MARGIN, y + headerHeight)
-        paint.color = COLOR_PRIMARY
+        // 1. Dark Green Innings Header Banner
+        val bannerHeight = 18f
+        paint.color = COLOR_DARK_GREEN
         paint.style = Paint.Style.FILL
-        canvas.drawRoundRect(headerRect, 6f, 6f, paint)
+        canvas.drawRect(LEFT_MARGIN, y, RIGHT_MARGIN, y + bannerHeight, paint)
 
+        // Left: Team Name (Bold White)
         paint.color = Color.WHITE
         paint.textAlign = Paint.Align.LEFT
         paint.textSize = 10.5f
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        canvas.drawText("${innings.battingTeam.uppercase()} ($inningsLabel)", LEFT_MARGIN + 10f, y + 17f, paint)
+        canvas.drawText(innings.battingTeam, LEFT_MARGIN + 6f, y + 13f, paint)
 
+        // Right: Score-Wickets (Overs) (Bold White) e.g. "52-7 (8.0)"
         paint.textAlign = Paint.Align.RIGHT
-        paint.color = Color.WHITE
-        paint.textSize = 11f
-        val scoreSummary = "${innings.totalRuns} / ${innings.wickets}  (${innings.oversFormatted} ov)   •   CRR: ${innings.currentRunRateFormatted}"
-        canvas.drawText(scoreSummary, RIGHT_MARGIN - 10f, y + 17f, paint)
+        val inningsScoreText = "${innings.totalRuns}-${innings.wickets} (${innings.oversFormatted})"
+        canvas.drawText(inningsScoreText, RIGHT_MARGIN - 6f, y + 13f, paint)
 
-        y += headerHeight + 8f
+        y += bannerHeight
 
-        // 2. Batting Table Header
-        val colBatterX = LEFT_MARGIN + 8f
-        val colDismissalX = LEFT_MARGIN + 130f
-        val colRunsX = LEFT_MARGIN + 355f
-        val colBallsX = LEFT_MARGIN + 395f
+        // 2. Batting Table Column Alignments
+        val colBatterX = LEFT_MARGIN + 4f
+        val colRunsX = LEFT_MARGIN + 320f
+        val colBallsX = LEFT_MARGIN + 380f
         val colFoursX = LEFT_MARGIN + 435f
-        val colSixesX = LEFT_MARGIN + 475f
-        val colSrX = RIGHT_MARGIN - 8f
+        val colSixesX = LEFT_MARGIN + 490f
+        val colSrX = RIGHT_MARGIN - 4f
 
-        val tableHeaderHeight = 18f
-        val tableHeaderRect = RectF(LEFT_MARGIN, y, RIGHT_MARGIN, y + tableHeaderHeight)
-        paint.color = COLOR_HEADER_BG
-        canvas.drawRoundRect(tableHeaderRect, 4f, 4f, paint)
+        // Table Header: Soft Sage Green Bar
+        val tableHeaderHeight = 15f
+        paint.color = COLOR_SAGE_GREEN
+        canvas.drawRect(LEFT_MARGIN, y, RIGHT_MARGIN, y + tableHeaderHeight, paint)
 
-        paint.color = Color.WHITE
+        paint.color = COLOR_HEADER_TEXT
         paint.textSize = 8.5f
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
 
         paint.textAlign = Paint.Align.LEFT
-        canvas.drawText("BATTER", colBatterX, y + 12.5f, paint)
-        canvas.drawText("HOW OUT / BOWLER", colDismissalX, y + 12.5f, paint)
+        canvas.drawText("Batsman", colBatterX, y + 11f, paint)
 
         paint.textAlign = Paint.Align.RIGHT
-        canvas.drawText("R", colRunsX, y + 12.5f, paint)
-        canvas.drawText("B", colBallsX, y + 12.5f, paint)
-        canvas.drawText("4s", colFoursX, y + 12.5f, paint)
-        canvas.drawText("6s", colSixesX, y + 12.5f, paint)
-        canvas.drawText("SR", colSrX, y + 12.5f, paint)
+        canvas.drawText("R", colRunsX, y + 11f, paint)
+        canvas.drawText("B", colBallsX, y + 11f, paint)
+        canvas.drawText("4s", colFoursX, y + 11f, paint)
+        canvas.drawText("6s", colSixesX, y + 11f, paint)
+        canvas.drawText("SR", colSrX, y + 11f, paint)
 
-        y += tableHeaderHeight + 2f
+        y += tableHeaderHeight
 
-        // 3. Batters Rows — 2-line rows for dismissed batters (name + dismissal detail)
-        paint.textSize = 8.5f
+        // 3. Batters Rows (2 lines per batter: Line 1 name & stats, Line 2 dismissal)
+        val batterRowHeight = 25f
+        val effectiveFow = innings.getEffectiveFallOfWickets()
 
-        for ((index, b) in innings.batters.withIndex()) {
+        for (b in innings.batters) {
             val isStriker = b.id == innings.currentStrikerId
             val isNonStriker = b.id == innings.currentNonStrikerId
             val isAtCrease = isStriker || isNonStriker
-            val isEven = index % 2 == 0
 
-            // Determine if batter is out: explicitly marked out OR has dismissal OR is not at crease after facing balls
-            val isBatterOut = b.isOut || (b.dismissal.isNotEmpty() && !b.dismissal.equals("not out", ignoreCase = true)) || (!isAtCrease && b.ballsFaced > 0)
+            // Robust check for whether batter was dismissed:
+            val isBatterOut = b.isOut ||
+                    (b.dismissal.isNotBlank() && !b.dismissal.equals("not out", ignoreCase = true) && !b.dismissal.equals("yet to bat", ignoreCase = true)) ||
+                    (b.id.isNotEmpty() && effectiveFow.any { it.batterId == b.id }) ||
+                    (!isAtCrease && (b.ballsFaced > 0 || b.runs > 0) && innings.wickets > 0)
 
-            val dismissalText = if (isBatterOut) {
-                b.dismissal.ifEmpty { "out" }
-            } else if (isAtCrease) {
-                if (isStriker) "not out *" else "not out"
-            } else {
-                "yet to bat"
+            val dismissalText = when {
+                isBatterOut -> b.dismissal.ifBlank { "out" }
+                isAtCrease -> "not out"
+                b.ballsFaced > 0 || b.runs > 0 -> "not out"
+                else -> "not out"
             }
 
-            // Taller row for dismissed batters so dismissal detail fits on 2 lines
-            val rowHeight = if (isBatterOut) 26f else 17f
-
-            // Row background
-            paint.color = if (isEven) COLOR_ROW_WHITE else COLOR_ROW_ALT
-            paint.style = Paint.Style.FILL
-            canvas.drawRect(LEFT_MARGIN, y, RIGHT_MARGIN, y + rowHeight, paint)
-
-            // Red left stripe for dismissed batters
-            if (isBatterOut) {
-                paint.color = COLOR_OUT_RED
-                canvas.drawRect(LEFT_MARGIN, y, LEFT_MARGIN + 3f, y + rowHeight, paint)
-            }
-
-            // Batter Name
-            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            paint.textAlign = Paint.Align.LEFT
-            paint.color = if (isBatterOut) COLOR_OUT_RED else COLOR_TEXT_MAIN
-            val displayName = when {
-                isStriker -> "${b.name} ★"
-                isBatterOut -> b.name
-                else      -> b.name
-            }
-            val nameY = if (isBatterOut) y + 10f else y + 12f
-            drawEllipsizedText(canvas, displayName, colBatterX + 5f, nameY, 118f, paint)
-
-            // Dismissal line
-            paint.textAlign = Paint.Align.LEFT
-            paint.textSize = 8.5f
-            if (isBatterOut) {
-                // Line 1: dismissal type in red  e.g. "c Patel b Sharma"
-                paint.color = COLOR_OUT_RED
-                paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD_ITALIC)
-                paint.textSize = 8f
-                drawEllipsizedText(canvas, dismissalText, colDismissalX, nameY, 210f, paint)
-
-                // Line 2: small "OUT" badge text below, same column
-                paint.color = Color.parseColor("#991B1B")
-                paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-                paint.textSize = 7f
-                canvas.drawText("✕ DISMISSED", colDismissalX, nameY + 11f, paint)
-            } else if (isAtCrease) {
-                paint.color = COLOR_NOT_OUT_GREEN
-                paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD_ITALIC)
-                canvas.drawText(dismissalText, colDismissalX, y + 12f, paint)
-            } else {
-                paint.color = COLOR_TEXT_LIGHT
-                paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.ITALIC)
-                canvas.drawText("yet to bat", colDismissalX, y + 12f, paint)
-            }
-
-            // Stats Columns (right-aligned, vertically centered in row)
-            val statsY = y + (rowHeight / 2f) + 3.5f
-            paint.textSize = 8.5f
-            paint.textAlign = Paint.Align.RIGHT
-            paint.color = if (b.isOut) COLOR_TEXT_MUTED else COLOR_TEXT_MAIN
-            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            canvas.drawText("${b.runs}", colRunsX, statsY, paint)
-
-            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-            paint.color = COLOR_TEXT_MUTED
-            canvas.drawText("${b.ballsFaced}", colBallsX, statsY, paint)
-            canvas.drawText("${b.fours}", colFoursX, statsY, paint)
-            canvas.drawText("${b.sixes}", colSixesX, statsY, paint)
-            canvas.drawText(b.strikeRateFormatted, colSrX, statsY, paint)
-
-            // Row Bottom Divider
-            paint.color = COLOR_DIVIDER
-            paint.style = Paint.Style.STROKE
-            paint.strokeWidth = 0.5f
-            canvas.drawLine(LEFT_MARGIN, y + rowHeight, RIGHT_MARGIN, y + rowHeight, paint)
-            paint.style = Paint.Style.FILL
-
-            y += rowHeight
-        }
-
-        // 4. Extras Row
-        val extrasRect = RectF(LEFT_MARGIN, y, RIGHT_MARGIN, y + 16f)
-        paint.color = Color.parseColor("#F1F5F9")
-        canvas.drawRect(extrasRect, paint)
-
-        paint.textAlign = Paint.Align.LEFT
-        paint.color = COLOR_TEXT_MUTED
-        paint.textSize = 8f
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-        val extrasDetail = "Extras: ${innings.extras.total} (wides ${innings.extras.wides}, no-balls ${innings.extras.noBalls}, byes ${innings.extras.byes}, leg-byes ${innings.extras.legByes})"
-        canvas.drawText(extrasDetail, colBatterX, y + 11.5f, paint)
-
-        paint.textAlign = Paint.Align.RIGHT
-        paint.color = COLOR_TEXT_MAIN
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        canvas.drawText("${innings.extras.total}", colRunsX, y + 11.5f, paint)
-
-        y += 16f
-
-        // 5. Total Score Row
-        val totalRect = RectF(LEFT_MARGIN, y, RIGHT_MARGIN, y + 18f)
-        paint.color = COLOR_PRIMARY_LIGHT
-        canvas.drawRect(totalRect, paint)
-
-        paint.textAlign = Paint.Align.LEFT
-        paint.color = COLOR_PRIMARY
-        paint.textSize = 9f
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        canvas.drawText("TOTAL INNINGS SCORE", colBatterX, y + 12.5f, paint)
-
-        paint.textAlign = Paint.Align.RIGHT
-        val totalText = "${innings.totalRuns} / ${innings.wickets} in ${innings.oversFormatted} ov (CRR: ${innings.currentRunRateFormatted})"
-        canvas.drawText(totalText, RIGHT_MARGIN - 8f, y + 12.5f, paint)
-
-        y += 24f
-
-        // 6. Bowling Table Header
-        val colBowlerNameX = LEFT_MARGIN + 8f
-        val colOversX = LEFT_MARGIN + 325f
-        val colMaidensX = LEFT_MARGIN + 380f
-        val colRunsConcededX = LEFT_MARGIN + 435f
-        val colWicketsX = LEFT_MARGIN + 490f
-        val colEconX = RIGHT_MARGIN - 8f
-
-        val bowlingHeaderRect = RectF(LEFT_MARGIN, y, RIGHT_MARGIN, y + tableHeaderHeight)
-        paint.color = COLOR_HEADER_BG
-        canvas.drawRoundRect(bowlingHeaderRect, 4f, 4f, paint)
-
-        paint.color = Color.WHITE
-        paint.textSize = 8.5f
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-
-        paint.textAlign = Paint.Align.LEFT
-        canvas.drawText("BOWLER", colBowlerNameX, y + 12.5f, paint)
-
-        paint.textAlign = Paint.Align.RIGHT
-        canvas.drawText("O", colOversX, y + 12.5f, paint)
-        canvas.drawText("M", colMaidensX, y + 12.5f, paint)
-        canvas.drawText("R", colRunsConcededX, y + 12.5f, paint)
-        canvas.drawText("W", colWicketsX, y + 12.5f, paint)
-        canvas.drawText("ECON", colEconX, y + 12.5f, paint)
-
-        y += tableHeaderHeight + 2f
-
-        // 7. Bowlers Rows
-        paint.textSize = 8.5f
-        val bowlerRowHeight = 17f
-        for ((index, bw) in innings.bowlers.withIndex()) {
-            val isEven = index % 2 == 0
-
-            // Row background
-            paint.color = if (isEven) COLOR_ROW_WHITE else COLOR_ROW_ALT
-            paint.style = Paint.Style.FILL
-            canvas.drawRect(LEFT_MARGIN, y, RIGHT_MARGIN, y + bowlerRowHeight, paint)
-
-            // Bowler Name
+            // Line 1: Batter Name
             paint.textAlign = Paint.Align.LEFT
             paint.color = COLOR_TEXT_MAIN
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            drawEllipsizedText(canvas, bw.name, colBowlerNameX, y + 12f, 250f, paint)
+            paint.textSize = 8.5f
+            canvas.drawText(b.name, colBatterX, y + 10f, paint)
 
-            // Stats Columns (Strictly Right-Aligned)
+            // Line 1 Stats: R, B, 4s, 6s, SR (Right-Aligned)
             paint.textAlign = Paint.Align.RIGHT
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+            canvas.drawText("${b.runs}", colRunsX, y + 10f, paint)
+            canvas.drawText("${b.ballsFaced}", colBallsX, y + 10f, paint)
+            canvas.drawText("${b.fours}", colFoursX, y + 10f, paint)
+            canvas.drawText("${b.sixes}", colSixesX, y + 10f, paint)
+
+            val srText = String.format(Locale.US, "%.2f", b.strikeRate)
+            canvas.drawText(srText, colSrX, y + 10f, paint)
+
+            // Line 2: Dismissal / How out (Muted dark gray text right below name)
+            paint.textAlign = Paint.Align.LEFT
             paint.color = COLOR_TEXT_MUTED
-            canvas.drawText(bw.oversFormatted, colOversX, y + 12f, paint)
-            canvas.drawText("${bw.maidens}", colMaidensX, y + 12f, paint)
-            canvas.drawText("${bw.runsConceded}", colRunsConcededX, y + 12f, paint)
-
-            // Wickets (Bold red/highlight if > 0)
-            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            paint.color = if (bw.wickets > 0) COLOR_OUT_RED else COLOR_TEXT_MAIN
-            canvas.drawText("${bw.wickets}", colWicketsX, y + 12f, paint)
-
-            // Economy
+            paint.textSize = 8f
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-            paint.color = COLOR_TEXT_MUTED
-            canvas.drawText(bw.economyFormatted, colEconX, y + 12f, paint)
+            canvas.drawText(dismissalText, colBatterX, y + 21f, paint)
 
-            // Row divider
+            // Bottom Divider
+            paint.color = COLOR_DIVIDER
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 0.5f
+            canvas.drawLine(LEFT_MARGIN, y + batterRowHeight, RIGHT_MARGIN, y + batterRowHeight, paint)
+            paint.style = Paint.Style.FILL
+
+            y += batterRowHeight
+        }
+
+        // 4. Extras Row
+        val extrasRowHeight = 15f
+        paint.textAlign = Paint.Align.LEFT
+        paint.color = COLOR_TEXT_MAIN
+        paint.textSize = 8.5f
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        canvas.drawText("Extras", colBatterX, y + 11f, paint)
+
+        paint.textAlign = Paint.Align.RIGHT
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+        val extrasSummary = "(${innings.extras.total}) ${innings.extras.byes} B, ${innings.extras.legByes} LB, ${innings.extras.wides} WD, ${innings.extras.noBalls} NB, 0 P"
+        canvas.drawText(extrasSummary, RIGHT_MARGIN - 4f, y + 11f, paint)
+
+        // Divider
+        paint.color = COLOR_DIVIDER
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 0.5f
+        canvas.drawLine(LEFT_MARGIN, y + extrasRowHeight, RIGHT_MARGIN, y + extrasRowHeight, paint)
+        paint.style = Paint.Style.FILL
+
+        y += extrasRowHeight
+
+        // 5. Total Row
+        val totalRowHeight = 15f
+        paint.textAlign = Paint.Align.LEFT
+        paint.color = COLOR_TEXT_MAIN
+        paint.textSize = 8.5f
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        canvas.drawText("Total", colBatterX, y + 11f, paint)
+
+        paint.textAlign = Paint.Align.RIGHT
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        val crrFormatted = String.format(Locale.US, "%.2f", innings.currentRunRate)
+        val totalSummary = "${innings.totalRuns}-${innings.wickets} (${innings.oversFormatted}) $crrFormatted"
+        canvas.drawText(totalSummary, RIGHT_MARGIN - 4f, y + 11f, paint)
+
+        // Divider
+        paint.color = COLOR_DIVIDER
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 0.5f
+        canvas.drawLine(LEFT_MARGIN, y + totalRowHeight, RIGHT_MARGIN, y + totalRowHeight, paint)
+        paint.style = Paint.Style.FILL
+
+        y += totalRowHeight
+
+        // 6. Bowler Table Header: Soft Sage Green Bar
+        val colBowlerX = LEFT_MARGIN + 4f
+        val colOversX = LEFT_MARGIN + 320f
+        val colMaidensX = LEFT_MARGIN + 380f
+        val colRunsConcededX = LEFT_MARGIN + 435f
+        val colWicketsX = LEFT_MARGIN + 490f
+        val colEconX = RIGHT_MARGIN - 4f
+
+        paint.color = COLOR_SAGE_GREEN
+        canvas.drawRect(LEFT_MARGIN, y, RIGHT_MARGIN, y + tableHeaderHeight, paint)
+
+        paint.color = COLOR_HEADER_TEXT
+        paint.textSize = 8.5f
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+
+        paint.textAlign = Paint.Align.LEFT
+        canvas.drawText("Bowler", colBowlerX, y + 11f, paint)
+
+        paint.textAlign = Paint.Align.RIGHT
+        canvas.drawText("O", colOversX, y + 11f, paint)
+        canvas.drawText("M", colMaidensX, y + 11f, paint)
+        canvas.drawText("R", colRunsConcededX, y + 11f, paint)
+        canvas.drawText("W", colWicketsX, y + 11f, paint)
+        canvas.drawText("ER", colEconX, y + 11f, paint)
+
+        y += tableHeaderHeight
+
+        // 7. Bowler Rows
+        val bowlerRowHeight = 15f
+        paint.textSize = 8.5f
+
+        for (bw in innings.bowlers) {
+            paint.textAlign = Paint.Align.LEFT
+            paint.color = COLOR_TEXT_MAIN
+            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            canvas.drawText(bw.name, colBowlerX, y + 11f, paint)
+
+            paint.textAlign = Paint.Align.RIGHT
+            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+            canvas.drawText(bw.oversFormatted, colOversX, y + 11f, paint)
+            canvas.drawText("${bw.maidens}", colMaidensX, y + 11f, paint)
+            canvas.drawText("${bw.runsConceded}", colRunsConcededX, y + 11f, paint)
+            canvas.drawText("${bw.wickets}", colWicketsX, y + 11f, paint)
+
+            val erText = String.format(Locale.US, "%.2f", bw.economyRate)
+            canvas.drawText(erText, colEconX, y + 11f, paint)
+
+            // Divider
             paint.color = COLOR_DIVIDER
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = 0.5f
@@ -548,39 +407,55 @@ object PdfScorecardExporter {
             y += bowlerRowHeight
         }
 
-        return y + 10f
-    }
+        // 8. Fall of Wickets Table
+        val fowList = effectiveFow
+        if (fowList.isNotEmpty()) {
+            val colFowNameX = LEFT_MARGIN + 4f
+            val colFowScoreX = LEFT_MARGIN + 440f
+            val colFowOverX = RIGHT_MARGIN - 4f
 
-    private fun drawFinalResultCard(
-        canvas: Canvas,
-        paint: Paint,
-        match: Match,
-        startY: Float
-    ) {
-        val y = startY
-        val cardRect = RectF(LEFT_MARGIN, y, RIGHT_MARGIN, y + 42f)
+            // Header: Soft Sage Green Bar
+            paint.color = COLOR_SAGE_GREEN
+            canvas.drawRect(LEFT_MARGIN, y, RIGHT_MARGIN, y + tableHeaderHeight, paint)
 
-        paint.color = COLOR_PRIMARY_LIGHT
-        paint.style = Paint.Style.FILL
-        canvas.drawRoundRect(cardRect, 8f, 8f, paint)
+            paint.color = COLOR_HEADER_TEXT
+            paint.textSize = 8.5f
+            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
 
-        paint.color = COLOR_PRIMARY_BORDER
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 1.5f
-        canvas.drawRoundRect(cardRect, 8f, 8f, paint)
-        paint.style = Paint.Style.FILL
+            paint.textAlign = Paint.Align.LEFT
+            canvas.drawText("Fall of wickets", colFowNameX, y + 11f, paint)
 
-        paint.textAlign = Paint.Align.CENTER
-        paint.color = COLOR_PRIMARY
-        paint.textSize = 12f
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        val centerX = (LEFT_MARGIN + RIGHT_MARGIN) / 2f
-        canvas.drawText("🏆 MATCH RESULT", centerX, y + 17f, paint)
+            paint.textAlign = Paint.Align.RIGHT
+            canvas.drawText("Score", colFowScoreX, y + 11f, paint)
+            canvas.drawText("Over", colFowOverX, y + 11f, paint)
 
-        paint.textSize = 11f
-        paint.color = COLOR_TEXT_MAIN
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        canvas.drawText(match.result.uppercase(), centerX, y + 33f, paint)
+            y += tableHeaderHeight
+
+            // FOW Rows
+            val fowRowHeight = 15f
+            for (fow in fowList) {
+                paint.textAlign = Paint.Align.LEFT
+                paint.color = COLOR_TEXT_MAIN
+                paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+                paint.textSize = 8.5f
+                canvas.drawText(fow.batterName, colFowNameX, y + 11f, paint)
+
+                paint.textAlign = Paint.Align.RIGHT
+                canvas.drawText("${fow.score}/${fow.wicketNumber}", colFowScoreX, y + 11f, paint)
+                canvas.drawText(fow.oversFormatted, colFowOverX, y + 11f, paint)
+
+                // Divider
+                paint.color = COLOR_DIVIDER
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = 0.5f
+                canvas.drawLine(LEFT_MARGIN, y + fowRowHeight, RIGHT_MARGIN, y + fowRowHeight, paint)
+                paint.style = Paint.Style.FILL
+
+                y += fowRowHeight
+            }
+        }
+
+        return y + 12f
     }
 
     private fun drawPageFooter(
@@ -589,45 +464,25 @@ object PdfScorecardExporter {
         pageNumber: Int,
         totalPages: Int
     ) {
-        val footerY = PAGE_HEIGHT - 22f
+        val footerY = PAGE_HEIGHT - 18f
 
         // Thin divider
         paint.color = COLOR_DIVIDER
         paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 0.8f
-        canvas.drawLine(LEFT_MARGIN, footerY - 10f, RIGHT_MARGIN, footerY - 10f, paint)
+        paint.strokeWidth = 0.6f
+        canvas.drawLine(LEFT_MARGIN, footerY - 8f, RIGHT_MARGIN, footerY - 8f, paint)
         paint.style = Paint.Style.FILL
 
-        // Left Note
+        // Left note
         paint.textAlign = Paint.Align.LEFT
         paint.color = COLOR_TEXT_LIGHT
-        paint.textSize = 8f
-        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.ITALIC)
-        val timeStamp = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date())
-        canvas.drawText("Generated via IGCC XI Live Cricket Scoring App • Exported: $timeStamp", LEFT_MARGIN, footerY, paint)
-
-        // Right Page Number
-        paint.textAlign = Paint.Align.RIGHT
+        paint.textSize = 7.5f
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-        canvas.drawText("Page $pageNumber of $totalPages", RIGHT_MARGIN, footerY, paint)
-    }
+        val timeStamp = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date())
+        canvas.drawText("Generated by IGCC XI Live Cricket • $timeStamp", LEFT_MARGIN, footerY, paint)
 
-    private fun drawEllipsizedText(
-        canvas: Canvas,
-        text: String,
-        x: Float,
-        y: Float,
-        maxWidth: Float,
-        paint: Paint
-    ) {
-        if (paint.measureText(text) <= maxWidth) {
-            canvas.drawText(text, x, y, paint)
-            return
-        }
-        var truncated = text
-        while (truncated.isNotEmpty() && paint.measureText("$truncated…") > maxWidth) {
-            truncated = truncated.dropLast(1)
-        }
-        canvas.drawText("$truncated…", x, y, paint)
+        // Right page number
+        paint.textAlign = Paint.Align.RIGHT
+        canvas.drawText("Page $pageNumber of $totalPages", RIGHT_MARGIN, footerY, paint)
     }
 }
