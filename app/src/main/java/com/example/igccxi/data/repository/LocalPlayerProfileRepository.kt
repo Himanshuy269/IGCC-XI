@@ -12,9 +12,11 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -22,6 +24,22 @@ import java.io.FileOutputStream
 import java.util.Locale
 import java.util.UUID
 
+/**
+ * ====================================================================================
+ * DATA LAYER: LOCAL PERSISTENCE REPOSITORY
+ * ====================================================================================
+ *
+ * [LocalPlayerProfileRepository] manages offline player profiles, custom avatars,
+ * and profile photos using internal JSON storage and local image files.
+ *
+ * JUNIOR DEVELOPER NOTE ON DISPATCHERS:
+ * - [Dispatchers.Main]: For UI events and state emission only. Never run file/network I/O here!
+ * - [Dispatchers.IO]: Specially designed for disk and network tasks (reading files, HTTP calls, Gson).
+ * - [Dispatchers.Default]: For heavy calculations (sorting large lists, parsing complex JSON).
+ *
+ * Here we use [withContext(Dispatchers.IO)] whenever accessing disk files to guarantee
+ * zero stutter/jank on the Android UI thread.
+ */
 class LocalPlayerProfileRepository(
     private val context: Context,
     private val matchRepository: MatchRepository? = null,
@@ -32,7 +50,15 @@ class LocalPlayerProfileRepository(
     private val cacheFile = File(context.filesDir, "player_profiles.json")
     private val photosDir = File(context.filesDir, "player_profiles").apply { mkdirs() }
 
-    private val _profilesFlow = MutableStateFlow<List<PlayerProfile>>(loadPersistedProfiles())
+    // Reactive StateFlow holding active player profiles in memory
+    private val _profilesFlow = MutableStateFlow<List<PlayerProfile>>(emptyList())
+
+    // Initialization job that reads JSON storage from disk on Dispatchers.IO
+    private val initJob: Job = coroutineScope.launch {
+        val loaded = withContext(Dispatchers.IO) { loadPersistedProfiles() }
+        _profilesFlow.value = loaded
+        seedFromMatches()
+    }
 
     companion object {
         private val AVATAR_COLORS = listOf(
@@ -50,12 +76,6 @@ class LocalPlayerProfileRepository(
             val hash = name.trim().lowercase(Locale.ROOT).hashCode()
             val index = Math.abs(hash) % AVATAR_COLORS.size
             return AVATAR_COLORS[index]
-        }
-    }
-
-    init {
-        coroutineScope.launch {
-            seedFromMatches()
         }
     }
 
@@ -87,15 +107,20 @@ class LocalPlayerProfileRepository(
 
     override fun observeProfiles(): Flow<List<PlayerProfile>> = _profilesFlow.asStateFlow()
 
-    override suspend fun getProfiles(): List<PlayerProfile> = _profilesFlow.value
+    override suspend fun getProfiles(): List<PlayerProfile> {
+        initJob.join()
+        return _profilesFlow.value
+    }
 
     override suspend fun getProfileByName(name: String): PlayerProfile? {
+        initJob.join()
         val clean = name.trim().lowercase(Locale.ROOT)
         if (clean.isEmpty()) return null
         return _profilesFlow.value.find { it.name.trim().lowercase(Locale.ROOT) == clean }
     }
 
     override suspend fun registerPlayerName(name: String): PlayerProfile {
+        initJob.join()
         val cleanName = name.trim()
         if (cleanName.isEmpty()) {
             return PlayerProfile(name = "")
@@ -216,38 +241,67 @@ class LocalPlayerProfileRepository(
         }
     }
 
-    override suspend fun seedFromMatches() {
-        val repo = matchRepository ?: return
+    /**
+     * Seeds initial player profiles by scanning existing match scorecards once on startup.
+     *
+     * JUNIOR DEVELOPER NOTE ON FLOW OPERATORS:
+     * - We use `.first()` instead of `.collect()` here!
+     * - `.collect()` listens indefinitely to every future match update (which would re-seed
+     *   on every single ball bowled, causing unnecessary CPU and disk write cycles).
+     * - `.first()` takes the first snapshot emission and immediately completes.
+     * - We also batch all new player additions into a single [persistProfiles] write,
+     *   preventing disk thrashing.
+     */
+    override suspend fun seedFromMatches() = withContext(Dispatchers.IO) {
+        val repo = matchRepository ?: return@withContext
         try {
+            val matches = repo.observeMatches().first()
             val namesToRegister = mutableSetOf<String>()
-            repo.observeMatches().collect { matches ->
-                for (match in matches) {
-                    val inningsList = listOfNotNull(match.innings1, match.innings2)
-                    for (innings in inningsList) {
-                        for (batter in innings.batters) {
-                            val n = batter.name.trim()
-                            if (n.isNotEmpty() && !n.startsWith("Striker", ignoreCase = true) && !n.startsWith("Non-Striker", ignoreCase = true)) {
-                                namesToRegister.add(n)
-                            }
-                        }
-                        for (bowler in innings.bowlers) {
-                            val n = bowler.name.trim()
-                            if (n.isNotEmpty() && !n.startsWith("Bowler", ignoreCase = true)) {
-                                namesToRegister.add(n)
-                            }
+
+            for (match in matches) {
+                val inningsList = listOfNotNull(match.innings1, match.innings2)
+                for (innings in inningsList) {
+                    for (batter in innings.batters) {
+                        val n = batter.name.trim()
+                        if (n.isNotEmpty() && !n.startsWith("Striker", ignoreCase = true) && !n.startsWith("Non-Striker", ignoreCase = true)) {
+                            namesToRegister.add(n)
                         }
                     }
-                }
-
-                // Register all unique player names found in matches
-                for (name in namesToRegister) {
-                    if (getProfileByName(name) == null) {
-                        registerPlayerName(name)
+                    for (bowler in innings.bowlers) {
+                        val n = bowler.name.trim()
+                        if (n.isNotEmpty() && !n.startsWith("Bowler", ignoreCase = true)) {
+                            namesToRegister.add(n)
+                        }
                     }
                 }
             }
+
+            // Register all unique player names in a single batch to avoid multiple disk writes
+            val currentProfiles = _profilesFlow.value.toMutableList()
+            var modified = false
+            for (name in namesToRegister) {
+                val clean = name.trim()
+                if (clean.isNotEmpty() && currentProfiles.none { it.name.trim().equals(clean, ignoreCase = true) }) {
+                    currentProfiles.add(
+                        PlayerProfile(
+                            id = UUID.randomUUID().toString(),
+                            name = clean,
+                            avatarColorHex = assignColor(clean),
+                            createdAt = System.currentTimeMillis(),
+                            updatedAt = System.currentTimeMillis()
+                        )
+                    )
+                    modified = true
+                }
+            }
+
+            if (modified) {
+                val sorted = currentProfiles.sortedBy { it.name.lowercase(Locale.ROOT) }
+                _profilesFlow.value = sorted
+                persistProfiles(sorted)
+            }
         } catch (_: Exception) {
-            // Seeding non-critical
+            // Seeding non-critical; fails gracefully offline or when empty
         }
     }
 }

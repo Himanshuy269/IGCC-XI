@@ -1,5 +1,7 @@
 package com.example.igccxi.domain.model
 
+import com.google.firebase.firestore.Exclude
+import com.google.firebase.firestore.PropertyName
 import java.util.Locale
 
 enum class BallType {
@@ -16,15 +18,18 @@ data class BallEvent(
     val type: BallType = BallType.NORMAL,
     val runsOffBat: Int = 0,
     val extraRuns: Int = 0,
-    val isLegalBall: Boolean = true,
-    val isWicket: Boolean = false,
+    @get:PropertyName("isLegalBall") @set:PropertyName("isLegalBall")
+    var isLegalBall: Boolean = true,
+    @get:PropertyName("isWicket") @set:PropertyName("isWicket")
+    var isWicket: Boolean = false,
     val batterId: String = "",
     val bowlerId: String = "",
     val displayText: String = "",
     val timestamp: Long = System.currentTimeMillis()
 ) {
+    @get:Exclude
     val isActuallyLegalBall: Boolean
-        get() = type != BallType.WIDE && type != BallType.NO_BALL && isLegalBall
+        get() = type != BallType.WIDE && type != BallType.NO_BALL
 }
 
 data class FallOfWicket(
@@ -41,6 +46,7 @@ data class Extras(
     val byes: Int = 0,
     val legByes: Int = 0
 ) {
+    @get:Exclude
     val total: Int
         get() = wides + noBalls + byes + legByes
 }
@@ -52,12 +58,15 @@ data class BatterScore(
     val ballsFaced: Int = 0,
     val fours: Int = 0,
     val sixes: Int = 0,
-    val isOut: Boolean = false,
+    @get:PropertyName("isOut") @set:PropertyName("isOut")
+    var isOut: Boolean = false,
     val dismissal: String = "" // "b Bowler", "c Fielder b Bowler", "run out", "not out"
 ) {
+    @get:Exclude
     val strikeRate: Double
         get() = if (ballsFaced > 0) (runs.toDouble() * 100.0) / ballsFaced else 0.0
 
+    @get:Exclude
     val strikeRateFormatted: String
         get() = String.format(Locale.US, "%.1f", strikeRate)
 }
@@ -71,15 +80,19 @@ data class BowlerScore(
     val runsConceded: Int = 0,
     val wickets: Int = 0
 ) {
+    @get:Exclude
     val oversFormatted: String
         get() = "$oversBowled.$ballsBowledInOver"
 
+    @get:Exclude
     val totalBalls: Int
         get() = (oversBowled * 6) + ballsBowledInOver
 
+    @get:Exclude
     val economyRate: Double
         get() = if (totalBalls > 0) (runsConceded.toDouble() * 6.0) / totalBalls else 0.0
 
+    @get:Exclude
     val economyFormatted: String
         get() = String.format(Locale.US, "%.2f", economyRate)
 }
@@ -92,7 +105,8 @@ data class Innings(
     val wickets: Int = 0,
     val oversBowled: Int = 0,
     val ballsBowledInOver: Int = 0, // 0 to 5
-    val isCompleted: Boolean = false,
+    @get:PropertyName("isCompleted") @set:PropertyName("isCompleted")
+    var isCompleted: Boolean = false,
     val currentStrikerId: String = "",
     val currentNonStrikerId: String = "",
     val currentBowlerId: String = "",
@@ -102,15 +116,19 @@ data class Innings(
     val recentBalls: List<BallEvent> = emptyList(), // recent balls for ticker & undo
     val fallOfWickets: List<FallOfWicket> = emptyList()
 ) {
+    @get:Exclude
     val totalLegalBalls: Int
         get() = (oversBowled * 6) + ballsBowledInOver
 
+    @get:Exclude
     val oversFormatted: String
         get() = "$oversBowled.$ballsBowledInOver"
 
+    @get:Exclude
     val currentRunRate: Double
         get() = if (totalLegalBalls > 0) (totalRuns.toDouble() * 6.0) / totalLegalBalls else 0.0
 
+    @get:Exclude
     val currentRunRateFormatted: String
         get() = String.format(Locale.US, "%.2f", currentRunRate)
 
@@ -121,6 +139,7 @@ data class Innings(
     /**
      * Returns fall of wickets recorded, or reconstructs from recent balls / out batters as fallback.
      */
+    @Exclude
     fun getEffectiveFallOfWickets(): List<FallOfWicket> {
         if (fallOfWickets.isNotEmpty()) return fallOfWickets
 
@@ -186,6 +205,7 @@ data class Match(
     val commonPlayerName: String = "", // Gully Cricket: Common player who bats and bowls for both teams
     val createdAt: Long = System.currentTimeMillis()
 ) {
+    @get:Exclude
     val hasCommonPlayer: Boolean
         get() = commonPlayerName.trim().isNotEmpty()
 
@@ -198,18 +218,23 @@ data class Match(
                 cleanName.contains("[CMN]", ignoreCase = true)
     }
 
+    @get:Exclude
     val maxWickets: Int
         get() = maxOf(1, playersPerTeam)
 
+    @get:Exclude
     val isScorable: Boolean
         get() = status == MatchStatus.INNINGS_1 || status == MatchStatus.INNINGS_2
 
+    @get:Exclude
     val currentInnings: Innings
         get() = if (currentInningsNumber == 1) innings1 else (innings2 ?: innings1)
 
+    @get:Exclude
     val currentBattingTeam: String
         get() = currentInnings.battingTeam
 
+    @get:Exclude
     val currentBowlingTeam: String
         get() = currentInnings.bowlingTeam
 }

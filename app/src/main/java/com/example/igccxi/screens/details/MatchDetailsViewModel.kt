@@ -7,12 +7,21 @@ import com.example.igccxi.data.repository.RepositoryProvider
 import com.example.igccxi.domain.usecase.DeleteMatchUseCase
 import com.example.igccxi.domain.usecase.GetCurrentUserIdUseCase
 import com.example.igccxi.domain.usecase.GetMatchByIdUseCase
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * ====================================================================================
+ * PRESENTATION LAYER: MATCH DETAILS VIEWMODEL
+ * ====================================================================================
+ *
+ * [MatchDetailsViewModel] loads and observes scorecard details for a specific match.
+ * Cancels previous observers when loading a new match ID to prevent active memory leaks.
+ */
 class MatchDetailsViewModel @JvmOverloads constructor(
     application: Application,
     private val getMatchByIdUseCase: GetMatchByIdUseCase = RepositoryProvider.provideGetMatchByIdUseCase(application),
@@ -23,8 +32,11 @@ class MatchDetailsViewModel @JvmOverloads constructor(
     private val _uiState = MutableStateFlow(MatchDetailsUiState())
     val uiState: StateFlow<MatchDetailsUiState> = _uiState.asStateFlow()
 
+    private var loadMatchJob: Job? = null
+
     fun loadMatch(matchId: String) {
-        viewModelScope.launch {
+        loadMatchJob?.cancel()
+        loadMatchJob = viewModelScope.launch {
             try {
                 val uid = getCurrentUserIdUseCase()
                 _uiState.update { it.copy(currentUserId = uid) }

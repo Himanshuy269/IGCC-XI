@@ -1,6 +1,6 @@
 # 🏏 IGCC XI — Cricket Live Scoring & Analytics App
 
-[![Version](https://img.shields.io/badge/version-1.3.9-blue.svg)](https://github.com/Himanshuy269/IGCC-XI/releases)
+[![Version](https://img.shields.io/badge/version-1.3.10-blue.svg)](https://github.com/Himanshuy269/IGCC-XI/releases)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0+-purple.svg)](https://kotlinlang.org)
 [![Android](https://img.shields.io/badge/Platform-Android%207.0%2B%20(API%2024%2B)-green.svg)](https://developer.android.com)
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-brightgreen.svg)](https://developer.android.com/jetpack/compose)
@@ -31,12 +31,14 @@ A modern, fast, and production-ready Android cricket scoring app tailored for cr
 
 ## 🛠️ Architecture & Tech Stack
 
+For an in-depth breakdown of the design patterns, Kotlin Coroutines, reactive data pipelines, and junior developer engineering guide, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
 - **UI Framework**: [Jetpack Compose](https://developer.android.com/jetpack/compose) with Material 3 design system
 - **Architecture**: Clean Architecture (Domain, Data, UI / Presentation) + MVVM pattern
-- **Concurrency & Reactivity**: Kotlin Coroutines & `StateFlow`
+- **Concurrency & Reactivity**: Kotlin Coroutines, `Flow`, and `StateFlow` with off-thread `flowOn(Dispatchers.Default)`
 - **Cloud Backend**: Google Cloud Firestore (real-time listeners and offline caching)
 - **Navigation**: Jetpack Navigation Compose with animated transitions
-- **Testing**: Comprehensive unit test suite (36 unit tests covering scoring engine, rankings, and use cases)
+- **Testing**: Comprehensive unit test suite covering scoring engine, rankings, and use cases
 - **CI/CD**: GitHub Actions automated release pipeline for signed APK artifacts
 
 ---

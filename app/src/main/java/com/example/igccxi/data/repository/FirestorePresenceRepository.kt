@@ -41,9 +41,22 @@ class FirestorePresenceRepository(
         }
     }
 
+    /**
+     * Streams active online users in real-time.
+     *
+     * JUNIOR DEVELOPER NOTE ON CALLBACKFLOW & CLEAN ARCHITECTURE:
+     * - [callbackFlow] converts callback-based listeners (like Firebase's addSnapshotListener)
+     *   into a standard Kotlin Coroutine Flow.
+     * - [awaitClose] is called when the subscriber stops collecting (e.g. user leaves the screen),
+     *   allowing us to safely detach listeners and cancel timers to prevent memory leaks.
+     * - Instead of polling Firestore over the network every 30 seconds, we cache the received
+     *   timestamps in memory and let the ticker re-calculate the active count locally for free!
+     */
     override fun observeActiveUsersCount(): Flow<Int> = callbackFlow {
         // Fallback default
         trySend(1)
+
+        var lastKnownTimestamps: List<Long> = emptyList()
 
         val listenerRegistration = presenceCollection.addSnapshotListener { snapshot, error ->
             if (error != null) {
@@ -54,32 +67,22 @@ class FirestorePresenceRepository(
 
             if (snapshot != null) {
                 val cutoff = System.currentTimeMillis() - ACTIVE_THRESHOLD_MS
-                val activeCount = snapshot.documents.count { doc ->
-                    val lastActive = doc.getLong("lastActiveAt") ?: 0L
-                    lastActive >= cutoff
-                }
-                // Always at least 1 active user (the current device)
+                val timestamps = snapshot.documents.mapNotNull { it.getLong("lastActiveAt") }
+                lastKnownTimestamps = timestamps
+                val activeCount = timestamps.count { it >= cutoff }
                 trySend(maxOf(activeCount, 1))
             } else {
                 trySend(1)
             }
         }
 
-        // Periodic ticker to prune expired users locally even without fresh remote writes
+        // Periodic ticker to prune expired users locally in memory without burning Firestore network reads
         val tickerJob = launch {
             while (isActive) {
                 delay(30_000L) // every 30 seconds
-                try {
-                    val snapshot = presenceCollection.get().await()
-                    val cutoff = System.currentTimeMillis() - ACTIVE_THRESHOLD_MS
-                    val activeCount = snapshot.documents.count { doc ->
-                        val lastActive = doc.getLong("lastActiveAt") ?: 0L
-                        lastActive >= cutoff
-                    }
-                    trySend(maxOf(activeCount, 1))
-                } catch (_: Exception) {
-                    // Ignore transient network errors on background tick
-                }
+                val cutoff = System.currentTimeMillis() - ACTIVE_THRESHOLD_MS
+                val activeCount = lastKnownTimestamps.count { it >= cutoff }
+                trySend(maxOf(activeCount, 1))
             }
         }
 
