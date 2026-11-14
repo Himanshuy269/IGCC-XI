@@ -64,6 +64,7 @@ import com.example.igccxi.screens.scoring.components.BattersScoreCard
 import com.example.igccxi.screens.scoring.components.BowlerDialog
 import com.example.igccxi.screens.scoring.components.BowlerScoreCard
 import com.example.igccxi.screens.scoring.components.EditOversDialog
+import com.example.igccxi.screens.scoring.components.EditPlayerNameDialog
 import com.example.igccxi.screens.scoring.components.ExtrasDialog
 import com.example.igccxi.screens.scoring.components.RecentDeliveriesSection
 import com.example.igccxi.screens.scoring.components.ScoreBoardCard
@@ -86,6 +87,7 @@ fun LiveScoringScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showEndInningsConfirmDialog by remember { mutableStateOf(false) }
     var showEditOversDialog by remember { mutableStateOf(false) }
+    var editingPlayer by remember { mutableStateOf<Triple<Boolean, String, String>?>(null) }
 
     LaunchedEffect(matchId) {
         viewModel.loadMatch(matchId)
@@ -212,13 +214,18 @@ fun LiveScoringScreen(
                     striker = striker,
                     nonStriker = nonStriker,
                     lastOutBatter = innings.batters.filter { it.isOut }.lastOrNull(),
-                    onSwapStrike = { viewModel.swapStrike() }
+                    onSwapStrike = { viewModel.swapStrike() },
+                    isCommonPlayer = { match?.isCommonPlayer(it) == true },
+                    onEditStriker = { striker?.let { editingPlayer = Triple(true, it.id, it.name) } },
+                    onEditNonStriker = { nonStriker?.let { editingPlayer = Triple(true, it.id, it.name) } }
                 )
 
                 // 3. Current Bowler Section
                 BowlerScoreCard(
                     bowler = bowler,
-                    onChangeBowlerClick = { viewModel.showBowlerDialog() }
+                    onChangeBowlerClick = { viewModel.showBowlerDialog() },
+                    isCommonPlayer = match?.isCommonPlayer(bowler?.name) == true,
+                    onEditBowler = { bowler?.let { editingPlayer = Triple(false, it.id, it.name) } }
                 )
 
                 // 4. Over Deliveries Ticker
@@ -383,6 +390,7 @@ fun LiveScoringScreen(
                     nonStrikerName = nonStriker?.name ?: "",
                     currentBowlerName = bowler?.name ?: "",
                     existingBowlerNames = innings.bowlers.map { it.name }.filter { it.isNotBlank() }.distinct(),
+                    commonPlayerName = match.commonPlayerName,
                     currentWickets = innings.wickets,
                     maxWickets = match.maxWickets,
                     isBattingAlone = isBattingAlone,
@@ -407,6 +415,7 @@ fun LiveScoringScreen(
                 BowlerDialog(
                     existingBowlers = innings.bowlers.map { it.name }.distinct(),
                     currentBowlerName = bowler?.name ?: "",
+                    commonPlayerName = match.commonPlayerName,
                     isOverComplete = uiState.isOverCompleteBowlerChange,
                     overNumber = uiState.completedOverNumber,
                     onDismiss = { viewModel.dismissBowlerDialog() },
@@ -417,6 +426,7 @@ fun LiveScoringScreen(
             if (uiState.showSecondInningsDialog) {
                 SecondInningsDialog(
                     battingTeam = innings.bowlingTeam,
+                    commonPlayerName = match.commonPlayerName,
                     onDismiss = { viewModel.dismissSecondInningsDialog() },
                     onConfirm = { strikerName, nonStrikerName, bowlerName ->
                         viewModel.startSecondInnings(strikerName, nonStrikerName, bowlerName)
@@ -431,6 +441,22 @@ fun LiveScoringScreen(
                     onConfirm = { newOvers ->
                         showEditOversDialog = false
                         viewModel.updateMatchOvers(newOvers)
+                    }
+                )
+            }
+
+            editingPlayer?.let { (isBatter, id, name) ->
+                EditPlayerNameDialog(
+                    title = if (isBatter) "Edit Batter Name" else "Edit Bowler Name",
+                    initialName = name,
+                    onDismiss = { editingPlayer = null },
+                    onConfirm = { newName ->
+                        editingPlayer = null
+                        if (isBatter) {
+                            viewModel.updateBatterName(id, newName)
+                        } else {
+                            viewModel.updateBowlerName(id, newName)
+                        }
                     }
                 )
             }

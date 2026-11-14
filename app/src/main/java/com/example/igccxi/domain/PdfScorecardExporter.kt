@@ -79,7 +79,7 @@ object PdfScorecardExporter {
         var y1 = drawMatchHeader(canvas1, paint, match)
 
         // 2. Innings 1 Section (Full Scorecard)
-        drawInningsSection(canvas1, paint, match.innings1, y1)
+        drawInningsSection(canvas1, paint, match, match.innings1, y1)
 
         // 3. Footer
         drawPageFooter(canvas1, paint, 1, totalPages)
@@ -97,7 +97,7 @@ object PdfScorecardExporter {
             var y2 = drawMatchHeader(canvas2, paint, match)
 
             // 2. Innings 2 Section (Full Scorecard)
-            drawInningsSection(canvas2, paint, innings2, y2)
+            drawInningsSection(canvas2, paint, match, innings2, y2)
 
             // 3. Footer
             drawPageFooter(canvas2, paint, 2, totalPages)
@@ -194,6 +194,7 @@ object PdfScorecardExporter {
     private fun drawInningsSection(
         canvas: Canvas,
         paint: Paint,
+        match: Match,
         innings: Innings,
         startY: Float
     ): Float {
@@ -275,7 +276,8 @@ object PdfScorecardExporter {
             paint.color = COLOR_TEXT_MAIN
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
             paint.textSize = 8.5f
-            canvas.drawText(b.name, colBatterX, y + 10f, paint)
+            val batterDisplayName = if (match.isCommonPlayer(b.name)) "${b.name} [CMN]" else b.name
+            canvas.drawText(batterDisplayName, colBatterX, y + 10f, paint)
 
             // Line 1 Stats: R, B, 4s, 6s, SR (Right-Aligned)
             paint.textAlign = Paint.Align.RIGHT
@@ -385,7 +387,8 @@ object PdfScorecardExporter {
             paint.textAlign = Paint.Align.LEFT
             paint.color = COLOR_TEXT_MAIN
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            canvas.drawText(bw.name, colBowlerX, y + 11f, paint)
+            val bowlerDisplayName = if (match.isCommonPlayer(bw.name)) "${bw.name} [CMN]" else bw.name
+            canvas.drawText(bowlerDisplayName, colBowlerX, y + 11f, paint)
 
             paint.textAlign = Paint.Align.RIGHT
             paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)

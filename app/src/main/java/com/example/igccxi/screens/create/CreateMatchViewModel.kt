@@ -33,13 +33,8 @@ class CreateMatchViewModel @JvmOverloads constructor(
         )
     }
 
-    fun autofillSamplePlayers() = _uiState.update {
-        it.copy(
-            strikerName = if (it.strikerName.isEmpty()) "Batter 1" else it.strikerName,
-            nonStrikerName = if (it.nonStrikerName.isEmpty()) "Batter 2" else it.nonStrikerName,
-            bowlerName = if (it.bowlerName.isEmpty()) "Bowler 1" else it.bowlerName,
-            commonPlayerName = if (it.hasCommonPlayer && it.commonPlayerName.isEmpty()) "Common Player" else it.commonPlayerName
-        )
+    fun autofillSamplePlayers() {
+        // Disabled: users must enter real player names to proceed
     }
 
     fun onPresetOversSelected(overs: Int) = _uiState.update {
@@ -177,9 +172,14 @@ class CreateMatchViewModel @JvmOverloads constructor(
             return
         }
 
-        val striker = state.strikerName.trim().ifEmpty { "Batter 1" }
-        val nonStriker = state.nonStrikerName.trim().ifEmpty { "Batter 2" }
-        val bowler = state.bowlerName.trim().ifEmpty { "Bowler 1" }
+        val striker = state.strikerName.trim()
+        val nonStriker = state.nonStrikerName.trim()
+        val bowler = state.bowlerName.trim()
+
+        if (striker.isEmpty() || nonStriker.isEmpty() || bowler.isEmpty()) {
+            _uiState.update { it.copy(errorMessage = "Please enter Striker, Non-Striker, and Bowler names to proceed") }
+            return
+        }
 
         if (striker.equals(nonStriker, ignoreCase = true)) {
             _uiState.update { it.copy(errorMessage = "Opening striker and non-striker cannot have the same player name") }

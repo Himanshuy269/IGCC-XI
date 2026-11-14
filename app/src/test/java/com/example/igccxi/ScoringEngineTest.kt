@@ -344,6 +344,43 @@ class ScoringEngineTest {
     }
 
     @Test
+    fun testCommonPlayer_gullyCricketConfigurationAndTagging() {
+        val matchWithCommon = ScoringEngine.startMatch(
+            match = Match(
+                teamA = "Team Red",
+                teamB = "Team Blue",
+                playersPerTeam = 6, // 5 regular + 1 common player (11 total odd players)
+                totalOvers = 10,
+                commonPlayerName = "Kashish"
+            ),
+            strikerName = "Striker 1",
+            nonStrikerName = "Non-Striker 2",
+            bowlerName = "Kashish" // Common player bowls opening over for Team Blue
+        )
+
+        assertTrue(matchWithCommon.hasCommonPlayer)
+        assertEquals("Kashish", matchWithCommon.commonPlayerName)
+        assertTrue(matchWithCommon.isCommonPlayer("Kashish"))
+        assertTrue(matchWithCommon.isCommonPlayer("Kashish [CMN]"))
+        assertTrue(matchWithCommon.isCommonPlayer("Kashish (CMN)"))
+        assertFalse(matchWithCommon.isCommonPlayer("Striker 1"))
+
+        // Common player as bowler in Innings 1
+        assertEquals("Kashish", matchWithCommon.currentInnings.getCurrentBowler()?.name)
+
+        // Record a wicket with Common Player as next batter in Innings 1
+        val afterWicket = ScoringEngine.recordWicket(
+            match = matchWithCommon,
+            dismissalDescription = "bowled",
+            newBatterName = "Kashish",
+            isStrikerOut = true
+        )
+
+        assertEquals("Kashish", afterWicket.currentInnings.getStriker()?.name)
+        assertTrue(afterWicket.isCommonPlayer(afterWicket.currentInnings.getStriker()?.name))
+    }
+
+    @Test
     fun testByesAndLegByes_accrueToTeamAndExtrasNotBatsmanOrBowler() {
         var current = match
         // Rohit faces ball 1, runs 1 Bye
@@ -585,5 +622,19 @@ class ScoringEngineTest {
         val over1 = overs[0]
         assertEquals(1, over1.overNumber)
         assertEquals(8, over1.balls.size)
+    }
+
+    @Test
+    fun testUpdateBatterNameAndBowlerName() {
+        val striker = match.currentInnings.getStriker()!!
+        val bowler = match.currentInnings.getCurrentBowler()!!
+        assertEquals("Rohit", striker.name)
+        assertEquals("Starc", bowler.name)
+
+        val updatedBatterMatch = ScoringEngine.updateBatterName(match, striker.id, "Rohit Sharma")
+        assertEquals("Rohit Sharma", updatedBatterMatch.currentInnings.getStriker()?.name)
+
+        val updatedBothMatch = ScoringEngine.updateBowlerName(updatedBatterMatch, bowler.id, "Mitchell Starc")
+        assertEquals("Mitchell Starc", updatedBothMatch.currentInnings.getCurrentBowler()?.name)
     }
 }

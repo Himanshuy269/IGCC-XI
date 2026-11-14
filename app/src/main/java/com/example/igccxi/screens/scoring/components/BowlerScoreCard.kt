@@ -1,6 +1,7 @@
 package com.example.igccxi.screens.scoring.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -10,9 +11,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChangeCircle
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
@@ -30,12 +33,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.igccxi.domain.model.BowlerScore
+import com.example.igccxi.ui.components.CommonPlayerBadge
 import com.example.igccxi.ui.theme.CricketWicketRed
 
 @Composable
 fun BowlerScoreCard(
     bowler: BowlerScore?,
-    onChangeBowlerClick: () -> Unit
+    onChangeBowlerClick: () -> Unit,
+    isCommonPlayer: Boolean = false,
+    onEditBowler: (() -> Unit)? = null
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -70,6 +76,28 @@ fun BowlerScoreCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    if (isCommonPlayer) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        CommonPlayerBadge()
+                    }
+                    if (onEditBowler != null && bowler != null) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Surface(
+                            onClick = onEditBowler,
+                            shape = CircleShape,
+                            color = Color.Transparent,
+                            modifier = Modifier.size(22.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit Bowler Name",
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(13.dp)
+                                )
+                            }
+                        }
+                    }
                 }
 
                 Surface(

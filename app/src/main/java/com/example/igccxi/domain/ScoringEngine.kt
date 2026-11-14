@@ -781,4 +781,49 @@ object ScoringEngine {
             else -> "Match tied"
         }
     }
+
+    /**
+     * Updates/corrects a batter's name in the match.
+     */
+    fun updateBatterName(match: Match, batterId: String, newName: String): Match {
+        val cleanName = newName.trim()
+        if (cleanName.isEmpty()) return match
+
+        fun updateInnings(innings: Innings): Innings {
+            if (innings.batters.none { it.id == batterId }) return innings
+            val updatedBatters = innings.batters.map { b ->
+                if (b.id == batterId) b.copy(name = cleanName) else b
+            }
+            val updatedFOW = innings.fallOfWickets.map { f ->
+                if (f.batterId == batterId) f.copy(batterName = cleanName) else f
+            }
+            return innings.copy(batters = updatedBatters, fallOfWickets = updatedFOW)
+        }
+
+        return match.copy(
+            innings1 = updateInnings(match.innings1),
+            innings2 = match.innings2?.let { updateInnings(it) }
+        )
+    }
+
+    /**
+     * Updates/corrects a bowler's name in the match.
+     */
+    fun updateBowlerName(match: Match, bowlerId: String, newName: String): Match {
+        val cleanName = newName.trim()
+        if (cleanName.isEmpty()) return match
+
+        fun updateInnings(innings: Innings): Innings {
+            if (innings.bowlers.none { it.id == bowlerId }) return innings
+            val updatedBowlers = innings.bowlers.map { b ->
+                if (b.id == bowlerId) b.copy(name = cleanName) else b
+            }
+            return innings.copy(bowlers = updatedBowlers)
+        }
+
+        return match.copy(
+            innings1 = updateInnings(match.innings1),
+            innings2 = match.innings2?.let { updateInnings(it) }
+        )
+    }
 }

@@ -18,9 +18,9 @@ data class CreateMatchUiState(
     val commonPlayerName: String = "",
     val isTeamAWonToss: Boolean = true,
     val tossDecision: String = "bat", // "bat" or "bowl"
-    val strikerName: String = "Striker 1",
-    val nonStrikerName: String = "Non-Striker 2",
-    val bowlerName: String = "Bowler 1",
+    val strikerName: String = "",
+    val nonStrikerName: String = "",
+    val bowlerName: String = "",
     val isSubmitting: Boolean = false,
     val errorMessage: String? = null
 )

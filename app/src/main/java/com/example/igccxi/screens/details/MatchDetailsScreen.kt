@@ -264,8 +264,9 @@ fun MatchDetailsScreen(
                                 ) {
                                     StatusBadge(status = match.status, isLive = match.isScorable)
                                     val sideInfo = if (match.playersPerTeam != 11) " • ${match.playersPerTeam}s" else ""
+                                    val cmnInfo = if (match.hasCommonPlayer) " • CMN: ${match.commonPlayerName}" else ""
                                     Text(
-                                        text = "${match.totalOvers} Overs$sideInfo • ${match.date}",
+                                        text = "${match.totalOvers} Overs$sideInfo$cmnInfo • ${match.date}",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = Color.White.copy(alpha = 0.9f),
                                         fontWeight = FontWeight.Bold
@@ -368,10 +369,16 @@ fun MatchDetailsScreen(
                     }
 
                     // Batting Table
-                    BattingTable(innings = currentInnings)
+                    BattingTable(
+                        innings = currentInnings,
+                        isCommonPlayer = { match.isCommonPlayer(it) }
+                    )
 
                     // Bowling Table
-                    BowlingTable(innings = currentInnings)
+                    BowlingTable(
+                        innings = currentInnings,
+                        isCommonPlayer = { match.isCommonPlayer(it) }
+                    )
 
                     // Fall of Wickets Table
                     FallOfWicketsTable(innings = currentInnings)

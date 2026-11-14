@@ -2,6 +2,7 @@ package com.example.igccxi.screens.scoring.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Card
@@ -21,6 +23,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -36,6 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.igccxi.domain.model.BatterScore
+import com.example.igccxi.ui.components.CommonPlayerBadge
 import com.example.igccxi.ui.theme.CricketGreenPrimary
 import com.example.igccxi.ui.theme.CricketWicketContainer
 import com.example.igccxi.ui.theme.CricketWicketRed
@@ -45,7 +49,10 @@ fun BattersScoreCard(
     striker: BatterScore?,
     nonStriker: BatterScore?,
     lastOutBatter: BatterScore? = null,
-    onSwapStrike: () -> Unit
+    onSwapStrike: () -> Unit,
+    isCommonPlayer: (String?) -> Boolean = { false },
+    onEditStriker: (() -> Unit)? = null,
+    onEditNonStriker: (() -> Unit)? = null
 ) {
     val isLoneBatsman = nonStriker == null || nonStriker.id.isBlank()
 
@@ -188,7 +195,9 @@ fun BattersScoreCard(
                 fours = striker?.fours ?: 0,
                 sixes = striker?.sixes ?: 0,
                 strikeRate = striker?.strikeRateFormatted ?: "0.0",
-                isOnStrike = true
+                isOnStrike = true,
+                isCommonPlayer = isCommonPlayer(striker?.name),
+                onEditClick = onEditStriker
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -220,7 +229,9 @@ fun BattersScoreCard(
                     fours = nonStriker?.fours ?: 0,
                     sixes = nonStriker?.sixes ?: 0,
                     strikeRate = nonStriker?.strikeRateFormatted ?: "0.0",
-                    isOnStrike = false
+                    isOnStrike = false,
+                    isCommonPlayer = isCommonPlayer(nonStriker?.name),
+                    onEditClick = onEditNonStriker
                 )
             }
 
@@ -249,6 +260,9 @@ fun BattersScoreCard(
                             modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.5.dp)
                         )
                     }
+                    if (isCommonPlayer(lastOutBatter.name)) {
+                        CommonPlayerBadge(modifier = Modifier.padding(end = 6.dp))
+                    }
                     Text(
                         text = "${lastOutBatter.name}  ${lastOutBatter.runs}(${lastOutBatter.ballsFaced})  •  ${lastOutBatter.dismissal}",
                         fontSize = 11.sp,
@@ -271,7 +285,9 @@ fun BatterTableRow(
     fours: Int,
     sixes: Int,
     strikeRate: String,
-    isOnStrike: Boolean
+    isOnStrike: Boolean,
+    isCommonPlayer: Boolean = false,
+    onEditClick: (() -> Unit)? = null
 ) {
     Surface(
         shape = RoundedCornerShape(10.dp),
@@ -301,8 +317,31 @@ fun BatterTableRow(
                     fontWeight = if (isOnStrike) FontWeight.Black else FontWeight.SemiBold,
                     color = if (isOnStrike) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
+                if (isCommonPlayer) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    CommonPlayerBadge()
+                }
+                if (onEditClick != null) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Surface(
+                        onClick = onEditClick,
+                        shape = CircleShape,
+                        color = Color.Transparent,
+                        modifier = Modifier.size(20.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit name",
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                modifier = Modifier.size(13.dp)
+                            )
+                        }
+                    }
+                }
             }
 
             Text(

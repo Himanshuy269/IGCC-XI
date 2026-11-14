@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.igccxi.ui.components.CommonPlayerBadge
 import com.example.igccxi.ui.theme.CricketExtraAmber
 import com.example.igccxi.ui.theme.CricketGold
 import com.example.igccxi.ui.theme.CricketGreenPrimary
@@ -58,6 +59,7 @@ fun WicketDialog(
     nonStrikerName: String = "",
     currentBowlerName: String = "",
     existingBowlerNames: List<String> = emptyList(),
+    commonPlayerName: String = "",
     currentWickets: Int = 0,
     maxWickets: Int = 10,
     isBattingAlone: Boolean = false,
@@ -346,14 +348,34 @@ fun WicketDialog(
                         )
                     }
                 } else {
+                    if (commonPlayerName.isNotBlank()) {
+                        val isCommonAlreadyBatted = existingBatterNames.any { it.trim().equals(commonPlayerName.trim(), ignoreCase = true) }
+                        if (!isCommonAlreadyBatted) {
+                            FilterChip(
+                                selected = newBatter.trim().equals(commonPlayerName.trim(), ignoreCase = true),
+                                onClick = {
+                                    newBatter = commonPlayerName.trim()
+                                    validationError = null
+                                },
+                                label = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("Next: $commonPlayerName", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        CommonPlayerBadge()
+                                    }
+                                }
+                            )
+                        }
+                    }
+
                     OutlinedTextField(
                         value = newBatter,
                         onValueChange = {
                             newBatter = it
                             validationError = null
                         },
-                        label = { Text("Next Batter Name") },
-                        placeholder = { Text("e.g. Next Batter") },
+                        label = { Text("Next Batter Name *") },
+                        placeholder = { Text("e.g. Hardik") },
                         singleLine = true,
                         isError = isDuplicate || validationError != null,
                         supportingText = {
@@ -384,11 +406,15 @@ fun WicketDialog(
                         validationError = "Duplicate player name not allowed in same innings"
                         return@Button
                     }
+                    if (!noNextBatterRequired && cleanName.isEmpty()) {
+                        validationError = "Please enter next batter name to proceed"
+                        return@Button
+                    }
                     val nextName = if (noNextBatterRequired) "" else cleanName
                     val effectiveOut = if (isBattingAlone) true else isStrikerOut
                     onConfirm(constructedDismissal, nextName, effectiveOut)
                 },
-                enabled = !isDuplicate,
+                enabled = !isDuplicate && (noNextBatterRequired || cleanName.isNotEmpty()),
                 colors = ButtonDefaults.buttonColors(containerColor = CricketWicketRed),
                 shape = RoundedCornerShape(10.dp)
             ) {
@@ -548,6 +574,7 @@ fun ExtrasDialog(
 fun BowlerDialog(
     existingBowlers: List<String>,
     currentBowlerName: String,
+    commonPlayerName: String = "",
     isOverComplete: Boolean = false,
     overNumber: Int = 0,
     onDismiss: () -> Unit,
@@ -587,6 +614,32 @@ fun BowlerDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (commonPlayerName.isNotBlank()) {
+                    val isCmnJustBowled = isOverComplete && commonPlayerName.trim().equals(previousBowler, ignoreCase = true)
+                    Text(
+                        text = "Common Player:",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    FilterChip(
+                        selected = bowlerName.trim().equals(commonPlayerName.trim(), ignoreCase = true),
+                        onClick = { bowlerName = commonPlayerName.trim() },
+                        enabled = !isCmnJustBowled,
+                        label = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = if (isCmnJustBowled) "$commonPlayerName (Just Bowled)" else commonPlayerName,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.width(5.dp))
+                                CommonPlayerBadge()
+                            }
+                        }
+                    )
+                }
+
                 if (existingBowlers.isNotEmpty()) {
                     Text(
                         text = if (isOverComplete) "Pick another bowler from team:" else "Pick previous bowler:",
@@ -600,16 +653,23 @@ fun BowlerDialog(
                     ) {
                         existingBowlers.forEach { name ->
                             val isJustBowled = isOverComplete && name.trim().equals(previousBowler, ignoreCase = true)
+                            val isCmn = commonPlayerName.isNotBlank() && name.trim().equals(commonPlayerName.trim(), ignoreCase = true)
                             FilterChip(
                                 selected = bowlerName.trim().equals(name.trim(), ignoreCase = true),
                                 onClick = { bowlerName = name },
                                 enabled = !isJustBowled,
                                 label = {
-                                    Text(
-                                        text = if (isJustBowled) "$name (Just Bowled)" else name,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = if (isJustBowled) "$name (Just Bowled)" else name,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        if (isCmn) {
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            CommonPlayerBadge()
+                                        }
+                                    }
                                 }
                             )
                         }
@@ -664,6 +724,7 @@ fun BowlerDialog(
 @Composable
 fun SecondInningsDialog(
     battingTeam: String,
+    commonPlayerName: String = "",
     onDismiss: () -> Unit,
     onConfirm: (striker: String, nonStriker: String, bowler: String) -> Unit
 ) {
@@ -672,11 +733,16 @@ fun SecondInningsDialog(
     var bowler by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val s = striker.trim().ifEmpty { "Chasing Striker" }
-    val ns = nonStriker.trim().ifEmpty { "Chasing Non-Striker" }
-    val isDuplicate = striker.trim().isNotEmpty() &&
-        nonStriker.trim().isNotEmpty() &&
-        s.equals(ns, ignoreCase = true)
+    val cleanStriker = striker.trim()
+    val cleanNonStriker = nonStriker.trim()
+    val cleanBowler = bowler.trim()
+    val isDuplicate = cleanStriker.isNotEmpty() &&
+        cleanNonStriker.isNotEmpty() &&
+        cleanStriker.equals(cleanNonStriker, ignoreCase = true)
+    val canProceed = cleanStriker.isNotEmpty() &&
+        cleanNonStriker.isNotEmpty() &&
+        cleanBowler.isNotEmpty() &&
+        !isDuplicate
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -686,10 +752,49 @@ fun SecondInningsDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "Enter opening batters and opening bowler for 2nd Innings:",
+                    text = "Enter opening batters and opening bowler for 2nd Innings * (All required):",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                if (commonPlayerName.isNotBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFDBEAFE).copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CommonPlayerBadge()
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "$commonPlayerName can bat or bowl in this innings too!",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1E40AF)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                FilterChip(
+                                    selected = striker.trim().equals(commonPlayerName.trim(), ignoreCase = true),
+                                    onClick = { striker = commonPlayerName.trim(); errorMessage = null },
+                                    label = { Text("As Striker", fontSize = 11.sp) }
+                                )
+                                FilterChip(
+                                    selected = nonStriker.trim().equals(commonPlayerName.trim(), ignoreCase = true),
+                                    onClick = { nonStriker = commonPlayerName.trim(); errorMessage = null },
+                                    label = { Text("As Non-Striker", fontSize = 11.sp) }
+                                )
+                                FilterChip(
+                                    selected = bowler.trim().equals(commonPlayerName.trim(), ignoreCase = true),
+                                    onClick = { bowler = commonPlayerName.trim(); errorMessage = null },
+                                    label = { Text("As Bowler", fontSize = 11.sp) }
+                                )
+                            }
+                        }
+                    }
+                }
 
                 OutlinedTextField(
                     value = striker,
@@ -697,8 +802,8 @@ fun SecondInningsDialog(
                         striker = it
                         errorMessage = null
                     },
-                    label = { Text("Opening Striker") },
-                    placeholder = { Text("e.g. Batter 1") },
+                    label = { Text("Opening Striker *") },
+                    placeholder = { Text("e.g. Rohit") },
                     singleLine = true,
                     isError = isDuplicate,
                     shape = RoundedCornerShape(10.dp),
@@ -711,8 +816,8 @@ fun SecondInningsDialog(
                         nonStriker = it
                         errorMessage = null
                     },
-                    label = { Text("Opening Non-Striker") },
-                    placeholder = { Text("e.g. Batter 2") },
+                    label = { Text("Opening Non-Striker *") },
+                    placeholder = { Text("e.g. Virat") },
                     singleLine = true,
                     isError = isDuplicate,
                     shape = RoundedCornerShape(10.dp),
@@ -730,9 +835,12 @@ fun SecondInningsDialog(
 
                 OutlinedTextField(
                     value = bowler,
-                    onValueChange = { bowler = it },
-                    label = { Text("Opening Bowler") },
-                    placeholder = { Text("e.g. Bowler 1") },
+                    onValueChange = {
+                        bowler = it
+                        errorMessage = null
+                    },
+                    label = { Text("Opening Bowler *") },
+                    placeholder = { Text("e.g. Bumrah") },
                     singleLine = true,
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -742,13 +850,17 @@ fun SecondInningsDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (s.equals(ns, ignoreCase = true)) {
+                    if (cleanStriker.isEmpty() || cleanNonStriker.isEmpty() || cleanBowler.isEmpty()) {
+                        errorMessage = "Please enter all opening player names"
+                        return@Button
+                    }
+                    if (cleanStriker.equals(cleanNonStriker, ignoreCase = true)) {
                         errorMessage = "Striker and non-striker cannot have the same player name"
                         return@Button
                     }
-                    onConfirm(striker, nonStriker, bowler)
+                    onConfirm(cleanStriker, cleanNonStriker, cleanBowler)
                 },
-                enabled = !isDuplicate,
+                enabled = canProceed,
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Text("Start Chasing", fontWeight = FontWeight.Bold)
@@ -836,6 +948,71 @@ fun EditOversDialog(
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Text("Update Overs", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun EditPlayerNameDialog(
+    title: String,
+    initialName: String,
+    onDismiss: () -> Unit,
+    onConfirm: (newName: String) -> Unit
+) {
+    var name by remember { mutableStateOf(initialName) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(text = title, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Edit and correct the player's name below:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = {
+                        name = it
+                        error = null
+                    },
+                    label = { Text("Player Name *") },
+                    placeholder = { Text("Enter correct name") },
+                    singleLine = true,
+                    isError = error != null,
+                    supportingText = {
+                        if (error != null) {
+                            Text(text = error ?: "", color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
+                        }
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val clean = name.trim()
+                    if (clean.isEmpty()) {
+                        error = "Player name cannot be empty"
+                    } else {
+                        onConfirm(clean)
+                    }
+                },
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text("Save Name", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {

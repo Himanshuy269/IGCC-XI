@@ -16,15 +16,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.igccxi.domain.model.Innings
+import com.example.igccxi.ui.components.CommonPlayerBadge
 
 @Composable
 fun BowlingTable(
     innings: Innings,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isCommonPlayer: (String?) -> Boolean = { false }
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -100,14 +103,23 @@ fun BowlingTable(
                         .padding(vertical = 6.dp, horizontal = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = if (isCurrentBowler) "${bowler.name} •" else bowler.name,
+                    Row(
                         modifier = Modifier.weight(2.5f),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = if (isCurrentBowler) FontWeight.SemiBold else FontWeight.Normal,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (isCurrentBowler) "${bowler.name} •" else bowler.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (isCurrentBowler) FontWeight.SemiBold else FontWeight.Normal,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (isCommonPlayer(bowler.name)) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            CommonPlayerBadge()
+                        }
+                    }
                     Text(
                         text = bowler.oversFormatted,
                         modifier = Modifier.weight(0.8f),

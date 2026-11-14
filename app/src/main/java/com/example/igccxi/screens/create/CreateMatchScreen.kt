@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FlashOn
@@ -39,12 +40,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -63,6 +66,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.igccxi.ui.theme.CricketGold
 import com.example.igccxi.ui.theme.CricketGreenPrimary
+import com.example.igccxi.ui.components.CommonPlayerBadge
+import com.example.igccxi.ui.theme.CommonPlayerBlue
+import com.example.igccxi.ui.theme.CommonPlayerBlueContainer
+import com.example.igccxi.ui.theme.CommonPlayerBlueText
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -330,7 +337,12 @@ fun CreateMatchScreen(
                             color = MaterialTheme.colorScheme.secondaryContainer
                         ) {
                             Text(
-                                text = "$displayPlayers Players • $maxW Wickets (Gully Rules)",
+                                text = if (uiState.hasCommonPlayer) {
+                                    val totalW = maxW + 1
+                                    "$totalW Batters • $totalW Wkts (${maxW}+1 CMN)"
+                                } else {
+                                    "$displayPlayers Players • $maxW Wickets (Gully Rules)"
+                                },
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -418,6 +430,89 @@ fun CreateMatchScreen(
                                 ) {
                                     Icon(Icons.Default.Add, contentDescription = "Increase", modifier = Modifier.size(16.dp))
                                 }
+                            }
+                        }
+                    }
+
+                    // ---------------------------------------------------------
+                    // Common Player Slot (Gully Cricket Rule)
+                    // ---------------------------------------------------------
+                    Spacer(modifier = Modifier.height(14.dp))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            CommonPlayerBadge()
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "Common Player Slot (Odd Total)",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Plays, bats & bowls for both teams",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = uiState.hasCommonPlayer,
+                            onCheckedChange = { viewModel.onHasCommonPlayerChange(it) }
+                        )
+                    }
+
+                    if (uiState.hasCommonPlayer) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        OutlinedTextField(
+                            value = uiState.commonPlayerName,
+                            onValueChange = { viewModel.onCommonPlayerNameChange(it) },
+                            label = { Text("Common Player Name *") },
+                            placeholder = { Text("e.g. Ramesh") },
+                            leadingIcon = {
+                                CommonPlayerBadge(modifier = Modifier.padding(start = 8.dp))
+                            },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        val baseCount = uiState.playersPerTeam
+                        val oddTotal = (baseCount * 2) + 1
+                        val teamBatters = baseCount + 1
+
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = CommonPlayerBlueContainer.copy(alpha = 0.6f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = CommonPlayerBlue,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "🏏 Gully Rule: $oddTotal total players (odd number). ${uiState.commonPlayerName.ifBlank { "Common Player" }} will bat and bowl for both teams! ($teamBatters wickets per side)",
+                                    color = CommonPlayerBlueText,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             }
                         }
                     }

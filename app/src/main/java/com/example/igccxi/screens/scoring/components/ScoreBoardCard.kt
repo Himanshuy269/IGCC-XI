@@ -1,5 +1,6 @@
 package com.example.igccxi.screens.scoring.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +33,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.igccxi.domain.model.Innings
 import com.example.igccxi.domain.model.Match
+import com.example.igccxi.ui.theme.CommonPlayerBlueBorder
+import com.example.igccxi.ui.theme.CommonPlayerBlueContainer
+import com.example.igccxi.ui.theme.CommonPlayerBlueText
 import com.example.igccxi.ui.theme.CricketGold
 import java.util.Locale
 
@@ -109,6 +113,26 @@ fun ScoreBoardCard(
                                     color = Color.Black,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                 )
+                            }
+                        }
+
+                        if (match.hasCommonPlayer) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = CommonPlayerBlueContainer,
+                                border = BorderStroke(0.6.dp, CommonPlayerBlueBorder)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                ) {
+                                    Text(
+                                        text = "CMN: ${match.commonPlayerName}",
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = CommonPlayerBlueText
+                                    )
+                                }
                             }
                         }
 

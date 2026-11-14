@@ -243,6 +243,22 @@ class LiveScoringViewModel @JvmOverloads constructor(
         updateMatchInRepository(updated)
     }
 
+    fun updateBatterName(batterId: String, newName: String) {
+        val current = _uiState.value.match ?: return
+        if (newName.isBlank()) return
+        pushHistory(current)
+        val updated = ScoringEngine.updateBatterName(current, batterId, newName)
+        updateMatchInRepository(updated)
+    }
+
+    fun updateBowlerName(bowlerId: String, newName: String) {
+        val current = _uiState.value.match ?: return
+        if (newName.isBlank()) return
+        pushHistory(current)
+        val updated = ScoringEngine.updateBowlerName(current, bowlerId, newName)
+        updateMatchInRepository(updated)
+    }
+
     private fun updateMatchInRepository(match: Match) {
         viewModelScope.launch {
             try {
