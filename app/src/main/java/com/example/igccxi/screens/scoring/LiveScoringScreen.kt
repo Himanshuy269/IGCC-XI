@@ -19,9 +19,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.SportsCricket
 import androidx.compose.material.icons.filled.SwapHoriz
+import com.example.igccxi.ui.components.AddProfilePhotoDialog
+import com.example.igccxi.ui.components.PlayerProfilesDirectoryDialog
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -133,6 +136,13 @@ fun LiveScoringScreen(
                 },
                 actions = {
                     if (match != null) {
+                        IconButton(onClick = { viewModel.setShowProfilesDirectory(true) }) {
+                            Icon(
+                                imageVector = Icons.Default.Group,
+                                contentDescription = "Player Profiles",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                         IconButton(onClick = { viewModel.swapStrike() }) {
                             Icon(
                                 imageVector = Icons.Default.SwapHoriz,
@@ -192,7 +202,7 @@ fun LiveScoringScreen(
                             horizontalArrangement = Arrangement.Center
                         ) {
                             Text(
-                                text = "🎯 FREE HIT NEXT BALL! (Cannot be out Bowled/Caught/LBW)",
+                                text = "ðŸŽ¯ FREE HIT NEXT BALL! (Cannot be out Bowled/Caught/LBW)",
                                 color = Color.White,
                                 fontWeight = FontWeight.Black,
                                 fontSize = 12.sp
@@ -217,7 +227,9 @@ fun LiveScoringScreen(
                     onSwapStrike = { viewModel.swapStrike() },
                     isCommonPlayer = { match?.isCommonPlayer(it) == true },
                     onEditStriker = { striker?.let { editingPlayer = Triple(true, it.id, it.name) } },
-                    onEditNonStriker = { nonStriker?.let { editingPlayer = Triple(true, it.id, it.name) } }
+                    onEditNonStriker = { nonStriker?.let { editingPlayer = Triple(true, it.id, it.name) } },
+                    allProfiles = uiState.allProfiles,
+                    onProfileClick = { viewModel.onRequestAddProfile(it) }
                 )
 
                 // 3. Current Bowler Section
@@ -225,7 +237,9 @@ fun LiveScoringScreen(
                     bowler = bowler,
                     onChangeBowlerClick = { viewModel.showBowlerDialog() },
                     isCommonPlayer = match?.isCommonPlayer(bowler?.name) == true,
-                    onEditBowler = { bowler?.let { editingPlayer = Triple(false, it.id, it.name) } }
+                    onEditBowler = { bowler?.let { editingPlayer = Triple(false, it.id, it.name) } },
+                    allProfiles = uiState.allProfiles,
+                    onProfileClick = { viewModel.onRequestAddProfile(it) }
                 )
 
                 // 4. Over Deliveries Ticker
@@ -394,6 +408,8 @@ fun LiveScoringScreen(
                     currentWickets = innings.wickets,
                     maxWickets = match.maxWickets,
                     isBattingAlone = isBattingAlone,
+                    allProfiles = uiState.allProfiles,
+                    onRequestAddProfile = { viewModel.onRequestAddProfile(it) },
                     onDismiss = { viewModel.dismissWicketDialog() },
                     onConfirm = { dismissal, newBatter, isStrikerOut ->
                         viewModel.recordWicket(dismissal, newBatter, isStrikerOut)
@@ -418,6 +434,8 @@ fun LiveScoringScreen(
                     commonPlayerName = match.commonPlayerName,
                     isOverComplete = uiState.isOverCompleteBowlerChange,
                     overNumber = uiState.completedOverNumber,
+                    allProfiles = uiState.allProfiles,
+                    onRequestAddProfile = { viewModel.onRequestAddProfile(it) },
                     onDismiss = { viewModel.dismissBowlerDialog() },
                     onConfirm = { name -> viewModel.selectBowler(name) }
                 )
@@ -427,6 +445,8 @@ fun LiveScoringScreen(
                 SecondInningsDialog(
                     battingTeam = innings.bowlingTeam,
                     commonPlayerName = match.commonPlayerName,
+                    allProfiles = uiState.allProfiles,
+                    onRequestAddProfile = { viewModel.onRequestAddProfile(it) },
                     onDismiss = { viewModel.dismissSecondInningsDialog() },
                     onConfirm = { strikerName, nonStrikerName, bowlerName ->
                         viewModel.startSecondInnings(strikerName, nonStrikerName, bowlerName)
@@ -449,6 +469,8 @@ fun LiveScoringScreen(
                 EditPlayerNameDialog(
                     title = if (isBatter) "Edit Batter Name" else "Edit Bowler Name",
                     initialName = name,
+                    allProfiles = uiState.allProfiles,
+                    onRequestAddProfile = { viewModel.onRequestAddProfile(it) },
                     onDismiss = { editingPlayer = null },
                     onConfirm = { newName ->
                         editingPlayer = null
@@ -460,6 +482,29 @@ fun LiveScoringScreen(
                     }
                 )
             }
+
+            // Dialog for adding / editing profile photo for any player
+            if (uiState.editingProfileForPlayer != null) {
+                val editingName = uiState.editingProfileForPlayer ?: ""
+                val currentProf = uiState.allProfiles.find { it.name.equals(editingName, ignoreCase = true) }
+                AddProfilePhotoDialog(
+                    playerName = editingName,
+                    currentProfile = currentProf,
+                    onDismiss = { viewModel.dismissAddProfileDialog() },
+                    onPhotoSelected = { uri -> viewModel.onPhotoSelected(editingName, uri) },
+                    onAvatarPresetSelected = { icon -> viewModel.onAvatarPresetSelected(editingName, icon) },
+                    onRemovePhoto = { viewModel.onRemovePhoto(editingName) }
+                )
+            }
+
+            // Dialog for viewing directory of all player profiles
+            PlayerProfilesDirectoryDialog(
+                isOpen = uiState.showProfilesDirectory,
+                onDismiss = { viewModel.setShowProfilesDirectory(false) },
+                profiles = uiState.allProfiles,
+                onRequestAddProfile = { viewModel.onRequestAddProfile(it) },
+                onAddNewPlayer = { viewModel.onAddNewPlayerToDirectory(it) }
+            )
         }
     }
 }

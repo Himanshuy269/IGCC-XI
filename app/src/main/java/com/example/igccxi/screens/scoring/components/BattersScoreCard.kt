@@ -43,6 +43,8 @@ import com.example.igccxi.ui.components.CommonPlayerBadge
 import com.example.igccxi.ui.theme.CricketGreenPrimary
 import com.example.igccxi.ui.theme.CricketWicketContainer
 import com.example.igccxi.ui.theme.CricketWicketRed
+import com.example.igccxi.domain.model.PlayerProfile
+import com.example.igccxi.ui.components.PlayerAvatar
 
 @Composable
 fun BattersScoreCard(
@@ -52,7 +54,9 @@ fun BattersScoreCard(
     onSwapStrike: () -> Unit,
     isCommonPlayer: (String?) -> Boolean = { false },
     onEditStriker: (() -> Unit)? = null,
-    onEditNonStriker: (() -> Unit)? = null
+    onEditNonStriker: (() -> Unit)? = null,
+    allProfiles: List<PlayerProfile> = emptyList(),
+    onProfileClick: ((String) -> Unit)? = null
 ) {
     val isLoneBatsman = nonStriker == null || nonStriker.id.isBlank()
 
@@ -115,7 +119,7 @@ fun BattersScoreCard(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "⚡ Batting Alone",
+                                text = "âš¡ Batting Alone",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = CricketGreenPrimary
@@ -188,8 +192,10 @@ fun BattersScoreCard(
             Spacer(modifier = Modifier.height(6.dp))
 
             // Striker Row (Highlighted with On-Strike indicator)
+            val strikerRawName = striker?.name ?: "Striker"
+            val strikerProfile = allProfiles.find { it.name.equals(strikerRawName, ignoreCase = true) }
             BatterTableRow(
-                name = if (isLoneBatsman) "${striker?.name ?: "Striker"} (Lone)" else (striker?.name ?: "Striker"),
+                name = if (isLoneBatsman) "$strikerRawName (Lone)" else strikerRawName,
                 runs = striker?.runs ?: 0,
                 balls = striker?.ballsFaced ?: 0,
                 fours = striker?.fours ?: 0,
@@ -197,6 +203,8 @@ fun BattersScoreCard(
                 strikeRate = striker?.strikeRateFormatted ?: "0.0",
                 isOnStrike = true,
                 isCommonPlayer = isCommonPlayer(striker?.name),
+                profile = strikerProfile,
+                onProfileClick = if (onProfileClick != null && striker?.name?.isNotBlank() == true) { { onProfileClick(strikerRawName) } } else null,
                 onEditClick = onEditStriker
             )
 
@@ -222,8 +230,10 @@ fun BattersScoreCard(
                     }
                 }
             } else {
+                val nonStrikerRawName = nonStriker?.name ?: "Non-Striker"
+                val nonStrikerProfile = allProfiles.find { it.name.equals(nonStrikerRawName, ignoreCase = true) }
                 BatterTableRow(
-                    name = nonStriker?.name ?: "Non-Striker",
+                    name = nonStrikerRawName,
                     runs = nonStriker?.runs ?: 0,
                     balls = nonStriker?.ballsFaced ?: 0,
                     fours = nonStriker?.fours ?: 0,
@@ -231,6 +241,8 @@ fun BattersScoreCard(
                     strikeRate = nonStriker?.strikeRateFormatted ?: "0.0",
                     isOnStrike = false,
                     isCommonPlayer = isCommonPlayer(nonStriker?.name),
+                    profile = nonStrikerProfile,
+                    onProfileClick = if (onProfileClick != null && nonStriker?.name?.isNotBlank() == true) { { onProfileClick(nonStrikerRawName) } } else null,
                     onEditClick = onEditNonStriker
                 )
             }
@@ -264,7 +276,7 @@ fun BattersScoreCard(
                         CommonPlayerBadge(modifier = Modifier.padding(end = 6.dp))
                     }
                     Text(
-                        text = "${lastOutBatter.name}  ${lastOutBatter.runs}(${lastOutBatter.ballsFaced})  •  ${lastOutBatter.dismissal}",
+                        text = "${lastOutBatter.name}  ${lastOutBatter.runs}(${lastOutBatter.ballsFaced})  â€¢  ${lastOutBatter.dismissal}",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -287,6 +299,8 @@ fun BatterTableRow(
     strikeRate: String,
     isOnStrike: Boolean,
     isCommonPlayer: Boolean = false,
+    profile: PlayerProfile? = null,
+    onProfileClick: (() -> Unit)? = null,
     onEditClick: (() -> Unit)? = null
 ) {
     Surface(
@@ -304,9 +318,20 @@ fun BatterTableRow(
                 modifier = Modifier.weight(1.8f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                if (name.isNotBlank()) {
+                    PlayerAvatar(
+                        name = name.removeSuffix(" (Lone)"),
+                        photoPath = profile?.photoPath,
+                        avatarIcon = profile?.avatarIcon,
+                        colorHex = profile?.avatarColorHex ?: 0xFF1B5E20,
+                        size = 22.dp,
+                        onClick = onProfileClick
+                    )
+                    Spacer(modifier = Modifier.width(5.dp))
+                }
                 if (isOnStrike) {
                     Text(
-                        text = "🏏",
+                        text = "ðŸ",
                         fontSize = 12.sp,
                         modifier = Modifier.padding(end = 4.dp)
                     )

@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.AlertDialog
@@ -68,6 +69,12 @@ import com.example.igccxi.screens.updater.AppUpdateViewModel
 import com.example.igccxi.screens.updater.InstallPermissionDialog
 import com.example.igccxi.ui.theme.CricketGold
 import com.example.igccxi.ui.theme.CricketSuccessGreen
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import com.example.igccxi.data.repository.RepositoryProvider
+import com.example.igccxi.ui.components.AddProfilePhotoDialog
+import com.example.igccxi.ui.components.PlayerProfilesDirectoryDialog
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,6 +90,13 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val updateState by updateViewModel.uiState.collectAsState()
     var showActiveUsersDialog by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val playerProfileRepo = remember { RepositoryProvider.getPlayerProfileRepository(context) }
+    val allProfiles by playerProfileRepo.observeProfiles().collectAsState(initial = emptyList())
+    var showPlayerProfilesDialog by remember { mutableStateOf(false) }
+    var editingProfileForPlayer by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -137,6 +151,19 @@ fun HomeScreen(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = { showPlayerProfilesDialog = true },
+                        modifier = Modifier
+                            .padding(end = 2.dp)
+                            .size(38.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Group,
+                            contentDescription = "Player Profiles Directory",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                     IconButton(
                         onClick = {
                             if (updateState.isUpdateAvailable && updateState.updateInfo != null) {
@@ -398,6 +425,47 @@ fun HomeScreen(
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Text("OK", fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    // Player Profiles Directory Dialog
+    PlayerProfilesDirectoryDialog(
+        isOpen = showPlayerProfilesDialog,
+        onDismiss = { showPlayerProfilesDialog = false },
+        profiles = allProfiles,
+        onRequestAddProfile = { editingProfileForPlayer = it },
+        onAddNewPlayer = { name ->
+            coroutineScope.launch { playerProfileRepo.registerPlayerName(name) }
+        }
+    )
+
+    // Add / Edit Profile Photo Dialog
+    if (editingProfileForPlayer != null) {
+        val editingName = editingProfileForPlayer ?: ""
+        val currentProf = allProfiles.find { it.name.equals(editingName, ignoreCase = true) }
+        AddProfilePhotoDialog(
+            playerName = editingName,
+            currentProfile = currentProf,
+            onDismiss = { editingProfileForPlayer = null },
+            onPhotoSelected = { uri ->
+                coroutineScope.launch {
+                    val saved = playerProfileRepo.saveImageFromUri(editingName, uri)
+                    if (saved != null) playerProfileRepo.updateProfilePhoto(editingName, saved, null)
+                    editingProfileForPlayer = null
+                }
+            },
+            onAvatarPresetSelected = { icon ->
+                coroutineScope.launch {
+                    playerProfileRepo.updateProfilePhoto(editingName, null, icon)
+                    editingProfileForPlayer = null
+                }
+            },
+            onRemovePhoto = {
+                coroutineScope.launch {
+                    playerProfileRepo.updateProfilePhoto(editingName, null, null)
+                    editingProfileForPlayer = null
                 }
             }
         )

@@ -67,6 +67,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.igccxi.ui.theme.CricketGold
 import com.example.igccxi.ui.theme.CricketGreenPrimary
 import com.example.igccxi.ui.components.CommonPlayerBadge
+import com.example.igccxi.ui.components.PlayerAutocompleteTextField
+import com.example.igccxi.ui.components.AddProfilePhotoDialog
+import com.example.igccxi.ui.components.PlayerProfilesDirectoryDialog
 import com.example.igccxi.ui.theme.CommonPlayerBlue
 import com.example.igccxi.ui.theme.CommonPlayerBlueContainer
 import com.example.igccxi.ui.theme.CommonPlayerBlueText
@@ -473,16 +476,13 @@ fun CreateMatchScreen(
 
                     if (uiState.hasCommonPlayer) {
                         Spacer(modifier = Modifier.height(10.dp))
-                        OutlinedTextField(
+                        PlayerAutocompleteTextField(
                             value = uiState.commonPlayerName,
                             onValueChange = { viewModel.onCommonPlayerNameChange(it) },
-                            label = { Text("Common Player Name *") },
-                            placeholder = { Text("e.g. Ramesh") },
-                            leadingIcon = {
-                                CommonPlayerBadge(modifier = Modifier.padding(start = 8.dp))
-                            },
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
+                            label = "Common Player Name *",
+                            placeholder = "e.g. Ramesh",
+                            allProfiles = uiState.allProfiles,
+                            onRequestAddProfile = { viewModel.onRequestAddProfile(it) },
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -508,7 +508,7 @@ fun CreateMatchScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "🏏 Gully Rule: $oddTotal total players (odd number). ${uiState.commonPlayerName.ifBlank { "Common Player" }} will bat and bowl for both teams! ($teamBatters wickets per side)",
+                                    text = "ðŸ Gully Rule: $oddTotal total players (odd number). ${uiState.commonPlayerName.ifBlank { "Common Player" }} will bat and bowl for both teams! ($teamBatters wickets per side)",
                                     color = CommonPlayerBlueText,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold
@@ -587,14 +587,14 @@ fun CreateMatchScreen(
                         FilterChip(
                             selected = uiState.tossDecision == "bat",
                             onClick = { viewModel.onTossDecisionChange("bat") },
-                            label = { Text("🏏 Bat First", fontWeight = FontWeight.Bold) },
+                            label = { Text("ðŸ Bat First", fontWeight = FontWeight.Bold) },
                             modifier = Modifier.weight(1f)
                         )
 
                         FilterChip(
                             selected = uiState.tossDecision == "bowl",
                             onClick = { viewModel.onTossDecisionChange("bowl") },
-                            label = { Text("⚾ Bowl First", fontWeight = FontWeight.Bold) },
+                            label = { Text("âš¾ Bowl First", fontWeight = FontWeight.Bold) },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -612,7 +612,7 @@ fun CreateMatchScreen(
                             if (uiState.isTeamAWonToss) teamBName else teamAName
                         }
                         Text(
-                            text = "👉 $battingTeam will bat in the 1st Innings.",
+                            text = "ðŸ‘‰ $battingTeam will bat in the 1st Innings.",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
@@ -702,55 +702,55 @@ fun CreateMatchScreen(
                         )
 
                         Surface(
-                            onClick = { viewModel.autofillSamplePlayers() },
+                            onClick = { viewModel.setShowDirectoryDialog(true) },
                             shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant
+                            color = MaterialTheme.colorScheme.primaryContainer
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.FlashOn, contentDescription = null, modifier = Modifier.size(13.dp))
-                                Spacer(modifier = Modifier.width(3.dp))
-                                Text("Auto-fill", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Profiles (${uiState.allProfiles.size})", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                             }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    OutlinedTextField(
+                    PlayerAutocompleteTextField(
                         value = uiState.strikerName,
                         onValueChange = { viewModel.onStrikerNameChange(it) },
-                        label = { Text("Striker (Facing ball 1)") },
-                        placeholder = { Text("e.g. Batter 1") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
+                        label = "Striker (Facing ball 1) *",
+                        placeholder = "Type name (e.g. Rohit)",
+                        allProfiles = uiState.allProfiles,
+                        onRequestAddProfile = { viewModel.onRequestAddProfile(it) },
+                        modifier = Modifier.fillMaxWidth()
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                    OutlinedTextField(
+                    PlayerAutocompleteTextField(
                         value = uiState.nonStrikerName,
                         onValueChange = { viewModel.onNonStrikerNameChange(it) },
-                        label = { Text("Non-Striker (Other end)") },
-                        placeholder = { Text("e.g. Batter 2") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
+                        label = "Non-Striker (Other end) *",
+                        placeholder = "Type name (e.g. Virat)",
+                        allProfiles = uiState.allProfiles,
+                        onRequestAddProfile = { viewModel.onRequestAddProfile(it) },
+                        modifier = Modifier.fillMaxWidth()
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                    OutlinedTextField(
+                    PlayerAutocompleteTextField(
                         value = uiState.bowlerName,
                         onValueChange = { viewModel.onBowlerNameChange(it) },
-                        label = { Text("Opening Bowler (Over 1)") },
-                        placeholder = { Text("e.g. Bowler 1") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
+                        label = "Opening Bowler (Over 1) *",
+                        placeholder = "Type name (e.g. Bumrah)",
+                        allProfiles = uiState.allProfiles,
+                        onRequestAddProfile = { viewModel.onRequestAddProfile(it) },
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
@@ -804,4 +804,27 @@ fun CreateMatchScreen(
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
+
+    // Dialog for adding / editing profile photo for any player
+    if (uiState.editingProfileForPlayer != null) {
+        val editingName = uiState.editingProfileForPlayer ?: ""
+        val currentProf = uiState.allProfiles.find { it.name.equals(editingName, ignoreCase = true) }
+        AddProfilePhotoDialog(
+            playerName = editingName,
+            currentProfile = currentProf,
+            onDismiss = { viewModel.dismissAddProfileDialog() },
+            onPhotoSelected = { uri -> viewModel.onPhotoSelected(editingName, uri) },
+            onAvatarPresetSelected = { icon -> viewModel.onAvatarPresetSelected(editingName, icon) },
+            onRemovePhoto = { viewModel.onRemovePhoto(editingName) }
+        )
+    }
+
+    // Dialog for viewing directory of all player profiles
+    PlayerProfilesDirectoryDialog(
+        isOpen = uiState.showDirectoryDialog,
+        onDismiss = { viewModel.setShowDirectoryDialog(false) },
+        profiles = uiState.allProfiles,
+        onRequestAddProfile = { viewModel.onRequestAddProfile(it) },
+        onAddNewPlayer = { viewModel.onAddNewPlayerToDirectory(it) }
+    )
 }

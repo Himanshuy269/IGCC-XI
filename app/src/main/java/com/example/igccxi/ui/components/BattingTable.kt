@@ -26,13 +26,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.igccxi.domain.model.Innings
+import com.example.igccxi.domain.model.PlayerProfile
 import com.example.igccxi.ui.components.CommonPlayerBadge
+import com.example.igccxi.ui.components.PlayerAvatar
 
 @Composable
 fun BattingTable(
     innings: Innings,
     modifier: Modifier = Modifier,
-    isCommonPlayer: (String?) -> Boolean = { false }
+    isCommonPlayer: (String?) -> Boolean = { false },
+    allProfiles: List<PlayerProfile> = emptyList(),
+    onProfileClick: ((String) -> Unit)? = null
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -136,6 +140,16 @@ fun BattingTable(
                 ) {
                     Column(modifier = Modifier.weight(2.6f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            val prof = allProfiles.find { it.name.equals(batter.name, ignoreCase = true) }
+                            PlayerAvatar(
+                                name = batter.name,
+                                photoPath = prof?.photoPath,
+                                avatarIcon = prof?.avatarIcon,
+                                colorHex = prof?.avatarColorHex ?: 0xFF1B5E20,
+                                size = 20.dp,
+                                onClick = if (onProfileClick != null) { { onProfileClick(batter.name) } } else null
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = if (isStriker) "${batter.name} *" else batter.name,
                                 style = MaterialTheme.typography.bodyMedium,

@@ -1,6 +1,7 @@
 package com.example.igccxi.screens.scoring
 
 import com.example.igccxi.domain.model.Match
+import com.example.igccxi.domain.model.PlayerProfile
 
 data class LiveScoringUiState(
     val match: Match? = null,
@@ -13,5 +14,8 @@ data class LiveScoringUiState(
     val showSecondInningsDialog: Boolean = false,
     val isScorer: Boolean = true,
     val isLoading: Boolean = true,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val allProfiles: List<PlayerProfile> = emptyList(),
+    val editingProfileForPlayer: String? = null,
+    val showProfilesDirectory: Boolean = false
 )

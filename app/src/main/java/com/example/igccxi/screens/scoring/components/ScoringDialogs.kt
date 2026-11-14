@@ -50,6 +50,8 @@ import com.example.igccxi.ui.theme.CricketGreenPrimary
 import com.example.igccxi.ui.theme.CricketSixPurple
 import com.example.igccxi.ui.theme.CricketWicketContainer
 import com.example.igccxi.ui.theme.CricketWicketRed
+import com.example.igccxi.domain.model.PlayerProfile
+import com.example.igccxi.ui.components.PlayerAutocompleteTextField
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -63,6 +65,8 @@ fun WicketDialog(
     currentWickets: Int = 0,
     maxWickets: Int = 10,
     isBattingAlone: Boolean = false,
+    allProfiles: List<PlayerProfile> = emptyList(),
+    onRequestAddProfile: (String) -> Unit = {},
     onDismiss: () -> Unit,
     onConfirm: (dismissal: String, newBatterName: String, isStrikerOut: Boolean) -> Unit
 ) {
@@ -214,13 +218,13 @@ fun WicketDialog(
 
                 // Bowler section (for all dismissals where bowler is credited)
                 if (!isRunOut) {
-                    OutlinedTextField(
+                    PlayerAutocompleteTextField(
                         value = bowlerName,
                         onValueChange = { bowlerName = it },
-                        label = { Text("Bowler (Taking Wicket)") },
-                        placeholder = { Text("e.g. Bumrah") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp),
+                        label = "Bowler (Taking Wicket)",
+                        placeholder = "Type name (e.g. Bumrah)",
+                        allProfiles = allProfiles,
+                        onRequestAddProfile = onRequestAddProfile,
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -248,34 +252,34 @@ fun WicketDialog(
                     )
 
                     if (!isCaughtAndBowled) {
-                        OutlinedTextField(
+                        PlayerAutocompleteTextField(
                             value = fielderName,
                             onValueChange = { fielderName = it },
-                            label = { Text("Catcher / Fielder Name (Optional)") },
-                            placeholder = { Text("e.g. Kohli") },
-                            singleLine = true,
-                            shape = RoundedCornerShape(10.dp),
+                            label = "Catcher / Fielder Name (Optional)",
+                            placeholder = "Type name (e.g. Kohli)",
+                            allProfiles = allProfiles,
+                            onRequestAddProfile = onRequestAddProfile,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
                 } else if (isStumped) {
-                    OutlinedTextField(
+                    PlayerAutocompleteTextField(
                         value = fielderName,
                         onValueChange = { fielderName = it },
-                        label = { Text("Wicketkeeper Name (Optional)") },
-                        placeholder = { Text("e.g. Dhoni") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp),
+                        label = "Wicketkeeper Name (Optional)",
+                        placeholder = "Type name (e.g. Dhoni)",
+                        allProfiles = allProfiles,
+                        onRequestAddProfile = onRequestAddProfile,
                         modifier = Modifier.fillMaxWidth()
                     )
                 } else if (isRunOut) {
-                    OutlinedTextField(
+                    PlayerAutocompleteTextField(
                         value = fielderName,
                         onValueChange = { fielderName = it },
-                        label = { Text("Fielder / Thrower (Optional)") },
-                        placeholder = { Text("e.g. Jadeja") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(10.dp),
+                        label = "Fielder / Thrower (Optional)",
+                        placeholder = "Type name (e.g. Jadeja)",
+                        allProfiles = allProfiles,
+                        onRequestAddProfile = onRequestAddProfile,
                         modifier = Modifier.fillMaxWidth()
                     )
                 } else if (isBoundaryPaar) {
@@ -285,7 +289,7 @@ fun WicketDialog(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "🏏 Gully Rule: Ball hit directly outside or over boundary wall is OUT! Wicket credited to $effectiveBowler.",
+                            text = "ðŸ Gully Rule: Ball hit directly outside or over boundary wall is OUT! Wicket credited to $effectiveBowler.",
                             color = MaterialTheme.colorScheme.onTertiaryContainer,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
@@ -304,7 +308,7 @@ fun WicketDialog(
                     Column(modifier = Modifier.padding(10.dp)) {
                         val dismissedName = if (isStrikerOut) strikerName.ifEmpty { "Striker" } else nonStrikerName.ifEmpty { "Non-Striker" }
                         Text(
-                            text = "🔴 OUT: $dismissedName",
+                            text = "ðŸ”´ OUT: $dismissedName",
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
                             color = CricketWicketRed
@@ -326,7 +330,7 @@ fun WicketDialog(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "🎯 Final Wicket: Innings will be All Out ($maxWickets wickets down). No next batter required.",
+                            text = "ðŸŽ¯ Final Wicket: Innings will be All Out ($maxWickets wickets down). No next batter required.",
                             color = CricketWicketRed,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
@@ -340,7 +344,7 @@ fun WicketDialog(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "⚡ Gully Cricket Rule: All $maxWickets players have batted. The remaining not-out batter will continue batting alone until the final ${maxWickets}th wicket.",
+                            text = "âš¡ Gully Cricket Rule: All $maxWickets players have batted. The remaining not-out batter will continue batting alone until the final ${maxWickets}th wicket.",
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
@@ -368,20 +372,21 @@ fun WicketDialog(
                         }
                     }
 
-                    OutlinedTextField(
+                    PlayerAutocompleteTextField(
                         value = newBatter,
                         onValueChange = {
                             newBatter = it
                             validationError = null
                         },
-                        label = { Text("Next Batter Name *") },
-                        placeholder = { Text("e.g. Hardik") },
-                        singleLine = true,
+                        label = "Next Batter Name *",
+                        placeholder = "Type name (e.g. Hardik)",
+                        allProfiles = allProfiles,
+                        onRequestAddProfile = onRequestAddProfile,
                         isError = isDuplicate || validationError != null,
                         supportingText = {
                             if (isDuplicate) {
                                 Text(
-                                    text = "⚠️ '$cleanName' has already batted or is at crease in this innings",
+                                    text = "Duplicate: '$cleanName' has already batted or is at crease",
                                     color = MaterialTheme.colorScheme.error,
                                     fontSize = 11.sp
                                 )
@@ -393,7 +398,6 @@ fun WicketDialog(
                                 )
                             }
                         },
-                        shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -577,6 +581,8 @@ fun BowlerDialog(
     commonPlayerName: String = "",
     isOverComplete: Boolean = false,
     overNumber: Int = 0,
+    allProfiles: List<PlayerProfile> = emptyList(),
+    onRequestAddProfile: (String) -> Unit = {},
     onDismiss: () -> Unit,
     onConfirm: (bowlerName: String) -> Unit
 ) {
@@ -598,7 +604,7 @@ fun BowlerDialog(
                 Spacer(modifier = Modifier.width(10.dp))
                 Column {
                     Text(
-                        text = if (isOverComplete) "Over $overNumber Complete! 🎯" else "Select Bowler",
+                        text = if (isOverComplete) "Over $overNumber Complete! ðŸŽ¯" else "Select Bowler",
                         fontWeight = FontWeight.Black,
                         fontSize = 18.sp
                     )
@@ -676,12 +682,13 @@ fun BowlerDialog(
                     }
                 }
 
-                OutlinedTextField(
+                PlayerAutocompleteTextField(
                     value = bowlerName,
                     onValueChange = { bowlerName = it },
-                    label = { Text("Or Type New Bowler Name") },
-                    placeholder = { Text("e.g. Jasprit Bumrah") },
-                    singleLine = true,
+                    label = "Or Type Bowler Name",
+                    placeholder = "Type name (e.g. Bumrah)",
+                    allProfiles = allProfiles,
+                    onRequestAddProfile = onRequestAddProfile,
                     isError = isSameConsecutiveBowler,
                     supportingText = {
                         if (isSameConsecutiveBowler) {
@@ -692,7 +699,6 @@ fun BowlerDialog(
                             )
                         }
                     },
-                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -725,6 +731,8 @@ fun BowlerDialog(
 fun SecondInningsDialog(
     battingTeam: String,
     commonPlayerName: String = "",
+    allProfiles: List<PlayerProfile> = emptyList(),
+    onRequestAddProfile: (String) -> Unit = {},
     onDismiss: () -> Unit,
     onConfirm: (striker: String, nonStriker: String, bowler: String) -> Unit
 ) {
@@ -796,53 +804,53 @@ fun SecondInningsDialog(
                     }
                 }
 
-                OutlinedTextField(
+                PlayerAutocompleteTextField(
                     value = striker,
                     onValueChange = {
                         striker = it
                         errorMessage = null
                     },
-                    label = { Text("Opening Striker *") },
-                    placeholder = { Text("e.g. Rohit") },
-                    singleLine = true,
+                    label = "Opening Striker *",
+                    placeholder = "Type name (e.g. Rohit)",
+                    allProfiles = allProfiles,
+                    onRequestAddProfile = onRequestAddProfile,
                     isError = isDuplicate,
-                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                OutlinedTextField(
+                PlayerAutocompleteTextField(
                     value = nonStriker,
                     onValueChange = {
                         nonStriker = it
                         errorMessage = null
                     },
-                    label = { Text("Opening Non-Striker *") },
-                    placeholder = { Text("e.g. Virat") },
-                    singleLine = true,
+                    label = "Opening Non-Striker *",
+                    placeholder = "Type name (e.g. Virat)",
+                    allProfiles = allProfiles,
+                    onRequestAddProfile = onRequestAddProfile,
                     isError = isDuplicate,
-                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 if (isDuplicate || errorMessage != null) {
                     Text(
-                        text = errorMessage ?: "⚠️ Striker and non-striker cannot have the same player name",
+                        text = errorMessage ?: "âš ï¸ Striker and non-striker cannot have the same player name",
                         color = MaterialTheme.colorScheme.error,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
 
-                OutlinedTextField(
+                PlayerAutocompleteTextField(
                     value = bowler,
                     onValueChange = {
                         bowler = it
                         errorMessage = null
                     },
-                    label = { Text("Opening Bowler *") },
-                    placeholder = { Text("e.g. Bumrah") },
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp),
+                    label = "Opening Bowler *",
+                    placeholder = "Type name (e.g. Bumrah)",
+                    allProfiles = allProfiles,
+                    onRequestAddProfile = onRequestAddProfile,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -962,6 +970,8 @@ fun EditOversDialog(
 fun EditPlayerNameDialog(
     title: String,
     initialName: String,
+    allProfiles: List<PlayerProfile> = emptyList(),
+    onRequestAddProfile: (String) -> Unit = {},
     onDismiss: () -> Unit,
     onConfirm: (newName: String) -> Unit
 ) {
@@ -980,22 +990,22 @@ fun EditPlayerNameDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                OutlinedTextField(
+                PlayerAutocompleteTextField(
                     value = name,
                     onValueChange = {
                         name = it
                         error = null
                     },
-                    label = { Text("Player Name *") },
-                    placeholder = { Text("Enter correct name") },
-                    singleLine = true,
+                    label = "Player Name *",
+                    placeholder = "Enter correct name",
+                    allProfiles = allProfiles,
+                    onRequestAddProfile = onRequestAddProfile,
                     isError = error != null,
                     supportingText = {
                         if (error != null) {
                             Text(text = error ?: "", color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
                         }
                     },
-                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
             }

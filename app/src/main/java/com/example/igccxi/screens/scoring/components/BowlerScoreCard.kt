@@ -33,7 +33,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.igccxi.domain.model.BowlerScore
+import com.example.igccxi.domain.model.PlayerProfile
 import com.example.igccxi.ui.components.CommonPlayerBadge
+import com.example.igccxi.ui.components.PlayerAvatar
 import com.example.igccxi.ui.theme.CricketWicketRed
 
 @Composable
@@ -41,7 +43,9 @@ fun BowlerScoreCard(
     bowler: BowlerScore?,
     onChangeBowlerClick: () -> Unit,
     isCommonPlayer: Boolean = false,
-    onEditBowler: (() -> Unit)? = null
+    onEditBowler: (() -> Unit)? = null,
+    allProfiles: List<PlayerProfile> = emptyList(),
+    onProfileClick: ((String) -> Unit)? = null
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -69,8 +73,21 @@ fun BowlerScoreCard(
                         letterSpacing = 0.8.sp
                     )
                     Spacer(modifier = Modifier.width(8.dp))
+                    val bowlerRawName = bowler?.name ?: "Current Bowler"
+                    val bowlerProfile = allProfiles.find { it.name.equals(bowlerRawName, ignoreCase = true) }
+                    if (bowler != null && bowler.name.isNotBlank()) {
+                        PlayerAvatar(
+                            name = bowlerRawName,
+                            photoPath = bowlerProfile?.photoPath,
+                            avatarIcon = bowlerProfile?.avatarIcon,
+                            colorHex = bowlerProfile?.avatarColorHex ?: 0xFF1B5E20,
+                            size = 22.dp,
+                            onClick = if (onProfileClick != null) { { onProfileClick(bowlerRawName) } } else null
+                        )
+                        Spacer(modifier = Modifier.width(5.dp))
+                    }
                     Text(
-                        text = "⚾ " + (bowler?.name ?: "Current Bowler"),
+                        text = bowlerRawName,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
                         maxLines = 1,
