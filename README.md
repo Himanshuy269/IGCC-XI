@@ -1,6 +1,6 @@
 # 🏏 IGCC XI — Cricket Live Scoring & Analytics App
 
-[![Version](https://img.shields.io/badge/version-1.3.7-blue.svg)](https://github.com/Himanshuy269/IGCC-XI/releases)
+[![Version](https://img.shields.io/badge/version-1.3.9-blue.svg)](https://github.com/Himanshuy269/IGCC-XI/releases)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0+-purple.svg)](https://kotlinlang.org)
 [![Android](https://img.shields.io/badge/Platform-Android%207.0%2B%20(API%2024%2B)-green.svg)](https://developer.android.com)
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-brightgreen.svg)](https://developer.android.com/jetpack/compose)
