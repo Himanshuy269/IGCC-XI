@@ -637,4 +637,60 @@ class ScoringEngineTest {
         val updatedBothMatch = ScoringEngine.updateBowlerName(updatedBatterMatch, bowler.id, "Mitchell Starc")
         assertEquals("Mitchell Starc", updatedBothMatch.currentInnings.getCurrentBowler()?.name)
     }
+
+    @Test
+    fun testSixConsecutiveWides_overNeverAdvancesAndLegalBallsStayZero() {
+        var current = match
+        // Bowler delivers 6 consecutive wides
+        repeat(6) {
+            current = ScoringEngine.recordWide(current, 1)
+        }
+
+        val inn = current.currentInnings
+        assertEquals(6, inn.totalRuns)
+        assertEquals(6, inn.extras.wides)
+        assertEquals(0, inn.oversBowled)
+        assertEquals(0, inn.ballsBowledInOver)
+        assertEquals(0, inn.totalLegalBalls)
+        assertEquals("0.0", inn.oversFormatted)
+        assertEquals(MatchStatus.INNINGS_1, current.status)
+
+        val bowler = inn.getCurrentBowler()!!
+        assertEquals(0, bowler.oversBowled)
+        assertEquals(0, bowler.ballsBowledInOver)
+        assertEquals("0.0", bowler.oversFormatted)
+        assertEquals(6, bowler.runsConceded)
+
+        val striker = inn.getStriker()!!
+        assertEquals(0, striker.ballsFaced)
+
+        // Overs breakdown check: Over 1 is strictly in-progress with 0/6 legal balls
+        val overs = com.example.igccxi.ui.components.groupBallsIntoOvers(inn)
+        assertEquals(1, overs.size)
+        val over1 = overs[0]
+        assertEquals(1, over1.overNumber)
+        assertEquals(0, over1.legalBalls)
+        assertFalse(over1.isComplete)
+        assertEquals(6, over1.balls.size)
+        assertEquals(6, over1.totalRuns)
+
+        // Bowler now delivers 6 legal dot deliveries
+        repeat(6) {
+            current = ScoringEngine.recordRuns(current, 0)
+        }
+
+        val completedInn = current.currentInnings
+        assertEquals(1, completedInn.oversBowled)
+        assertEquals(0, completedInn.ballsBowledInOver)
+        assertEquals(6, completedInn.totalLegalBalls)
+        assertEquals(12, completedInn.recentBalls.size)
+
+        val completedOvers = com.example.igccxi.ui.components.groupBallsIntoOvers(completedInn)
+        assertEquals(1, completedOvers.size)
+        val completedOver1 = completedOvers[0]
+        assertEquals(1, completedOver1.overNumber)
+        assertEquals(6, completedOver1.legalBalls)
+        assertTrue(completedOver1.isComplete)
+        assertEquals(12, completedOver1.balls.size)
+    }
 }

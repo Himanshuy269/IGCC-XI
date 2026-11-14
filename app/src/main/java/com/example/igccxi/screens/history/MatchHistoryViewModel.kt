@@ -8,10 +8,12 @@ import com.example.igccxi.domain.model.MatchStatus
 import com.example.igccxi.domain.usecase.DeleteMatchUseCase
 import com.example.igccxi.domain.usecase.GetCurrentUserIdUseCase
 import com.example.igccxi.domain.usecase.GetMatchesUseCase
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -19,6 +21,21 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+/**
+ * ====================================================================================
+ * PRESENTATION LAYER: MVVM / MVI VIEWMODEL
+ * ====================================================================================
+ *
+ * [MatchHistoryViewModel] manages the match history, scorecard filtering, and search state.
+ *
+ * JUNIOR DEVELOPER NOTE ON REACTIVE COMBINE & STATEIN:
+ * - Instead of manually updating UI state in separate callback listeners, we use [combine].
+ * - Whenever ANY stream emits (new matches, new search text, filter changes), [combine]
+ *   re-computes the single source of truth [MatchHistoryUiState].
+ * - [.flowOn(Dispatchers.Default)] runs the filtering & distinct date calculation off the main thread.
+ * - [.stateIn(SharingStarted.WhileSubscribed(5000))] automatically stops collecting 5 seconds
+ *   after the user navigates away (e.g. screen rotation, going home), saving battery and memory!
+ */
 class MatchHistoryViewModel @JvmOverloads constructor(
     application: Application,
     private val getMatchesUseCase: GetMatchesUseCase = RepositoryProvider.provideGetMatchesUseCase(application),
@@ -93,15 +110,17 @@ class MatchHistoryViewModel @JvmOverloads constructor(
             currentUserId = uid,
             isLoading = false
         )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = MatchHistoryUiState(
-            todayDate = todayFormatted,
-            yesterdayDate = yesterdayFormatted,
-            isLoading = true
+    }
+        .flowOn(Dispatchers.Default) // Offload filtering and sorting away from the Android UI thread
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = MatchHistoryUiState(
+                todayDate = todayFormatted,
+                yesterdayDate = yesterdayFormatted,
+                isLoading = true
+            )
         )
-    )
 
     fun onStatusFilterSelected(filter: ScorecardFilter) {
         _statusFilter.value = filter

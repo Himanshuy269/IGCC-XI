@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import com.example.igccxi.domain.model.BallEvent
 import com.example.igccxi.domain.model.BallType
 import com.example.igccxi.domain.model.Innings
+import com.example.igccxi.ui.theme.CricketExtraAmber
 import com.example.igccxi.ui.theme.CricketFourBlue
 import com.example.igccxi.ui.theme.CricketSuccessGreen
 import com.example.igccxi.ui.theme.CricketWicketRed
@@ -47,12 +48,14 @@ data class OverSummary(
     val bowlerName: String,
     val batterNames: List<String>,
     val totalRuns: Int,
+    val legalBalls: Int,
+    val isComplete: Boolean,
     val balls: List<BallEvent>
 )
 
 /**
  * Groups raw ball deliveries of an innings into Over-by-Over breakdowns.
- * Each over has up to 6 legal balls (plus any wides and no-balls).
+ * Each over has strictly 6 legal balls (plus any wides and no-balls).
  */
 fun groupBallsIntoOvers(innings: Innings): List<OverSummary> {
     if (innings.recentBalls.isEmpty()) return emptyList()
@@ -67,7 +70,7 @@ fun groupBallsIntoOvers(innings: Innings): List<OverSummary> {
         if (ball.isActuallyLegalBall) {
             legalCount++
             if (legalCount == 6) {
-                overs.add(buildOverSummary(currentOverNumber, currentBalls, innings))
+                overs.add(buildOverSummary(currentOverNumber, currentBalls, innings, 6, isComplete = true))
                 currentOverNumber++
                 legalCount = 0
                 currentBalls = mutableListOf()
@@ -77,7 +80,7 @@ fun groupBallsIntoOvers(innings: Innings): List<OverSummary> {
 
     // Capture in-progress final over if incomplete
     if (currentBalls.isNotEmpty()) {
-        overs.add(buildOverSummary(currentOverNumber, currentBalls, innings))
+        overs.add(buildOverSummary(currentOverNumber, currentBalls, innings, legalCount, isComplete = false))
     }
 
     return overs
@@ -86,13 +89,19 @@ fun groupBallsIntoOvers(innings: Innings): List<OverSummary> {
 private fun buildOverSummary(
     overNumber: Int,
     balls: List<BallEvent>,
-    innings: Innings
+    innings: Innings,
+    legalBalls: Int,
+    isComplete: Boolean
 ): OverSummary {
     val totalRuns = balls.sumOf { it.runsOffBat + it.extraRuns }
 
-    // Find bowler name from the balls
-    val bowlerId = balls.firstOrNull { it.bowlerId.isNotBlank() }?.bowlerId ?: ""
-    val bowlerName = innings.bowlers.find { it.id == bowlerId }?.name?.ifBlank { "Bowler" } ?: "Bowler"
+    // Find distinct bowler names from the balls in this over
+    val bowlerNames = balls.map { it.bowlerId }
+        .filter { it.isNotBlank() }
+        .distinct()
+        .mapNotNull { bId -> innings.bowlers.find { it.id == bId }?.name?.ifBlank { null } }
+        .ifEmpty { listOf("Bowler") }
+    val bowlerTitle = bowlerNames.joinToString(" & ")
 
     // Find distinct batters who faced balls in this over, in order of delivery
     val batterNames = balls.map { it.batterId }
@@ -103,9 +112,11 @@ private fun buildOverSummary(
 
     return OverSummary(
         overNumber = overNumber,
-        bowlerName = bowlerName,
+        bowlerName = bowlerTitle,
         batterNames = batterNames,
         totalRuns = totalRuns,
+        legalBalls = legalBalls,
+        isComplete = isComplete,
         balls = balls
     )
 }
@@ -191,9 +202,9 @@ fun OverRowItem(
             .padding(vertical = 12.dp, horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left Column: Over number and Total Runs
+        // Left Column: Over number, In-Progress status, and Total Runs
         Column(
-            modifier = Modifier.width(66.dp),
+            modifier = Modifier.width(78.dp),
             verticalArrangement = Arrangement.Center
         ) {
             Text(
@@ -202,6 +213,14 @@ fun OverRowItem(
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
+            if (!over.isComplete) {
+                Text(
+                    text = "${over.legalBalls}/6 balls",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = CricketExtraAmber
+                )
+            }
             Spacer(modifier = Modifier.height(2.dp))
             val runsLabel = if (over.totalRuns == 1) "1 Run" else "${over.totalRuns} Runs"
             Text(
@@ -252,9 +271,11 @@ fun OverRowItem(
  * - Wicket: Red circle with "OUT"
  * - Six: Green circle with "6"
  * - Four: Blue circle with "4"
- * - Dots: White circle with "0"
- * - Runs: White circle with "1", "2", "3"
- * - Extras: Label below badge ("WD", "NB", "LB", "B")
+ * - Wide: Amber circle with "WD" (never confused with dot ball!)
+ * - No Ball: Orange circle with "NB"
+ * - Byes / Leg-byes: Purple circle with "B" / "LB"
+ * - Dots: Neutral circle with "0"
+ * - Runs: Primary container circle with "1", "2", "3"
  */
 @Composable
 fun BallDeliveryCircle(
@@ -267,10 +288,10 @@ fun BallDeliveryCircle(
     val isFour = runs == 4
 
     val extraLabel: String? = when (ball.type) {
-        BallType.WIDE -> "WD"
-        BallType.NO_BALL -> "NB"
-        BallType.BYE -> "B"
-        BallType.LEG_BYE -> "LB"
+        BallType.WIDE -> if (ball.extraRuns > 1) "+${ball.extraRuns - 1}r" else null
+        BallType.NO_BALL -> if (runs > 0) "+${runs}r" else null
+        BallType.BYE -> if (ball.extraRuns > 1) "${ball.extraRuns}B" else "BYE"
+        BallType.LEG_BYE -> if (ball.extraRuns > 1) "${ball.extraRuns}LB" else "LEG BYE"
         else -> null
     }
 
@@ -299,29 +320,33 @@ fun BallDeliveryCircle(
             displayText = "4"
         }
         ball.type == BallType.WIDE -> {
-            badgeBgColor = MaterialTheme.colorScheme.surface
-            badgeTextColor = MaterialTheme.colorScheme.onSurface
-            badgeBorderColor = MaterialTheme.colorScheme.outlineVariant
-            // If wide was a dot (just 1 wide), display 0. If extra runs were taken off wide, show them.
-            val wideRuns = if (ball.extraRuns > 1) "${ball.extraRuns - 1}" else "0"
-            displayText = wideRuns
+            badgeBgColor = CricketExtraAmber
+            badgeTextColor = Color.White
+            badgeBorderColor = Color.Transparent
+            displayText = if (ball.extraRuns > 1) "${ball.extraRuns}WD" else "WD"
         }
         ball.type == BallType.NO_BALL -> {
-            badgeBgColor = MaterialTheme.colorScheme.surface
-            badgeTextColor = MaterialTheme.colorScheme.onSurface
-            badgeBorderColor = MaterialTheme.colorScheme.outlineVariant
-            displayText = if (runs > 0) "$runs" else "0"
+            badgeBgColor = Color(0xFFEA580C) // Vibrant orange for No Ball
+            badgeTextColor = Color.White
+            badgeBorderColor = Color.Transparent
+            displayText = if (runs > 0) "${runs}NB" else "NB"
         }
-        ball.type == BallType.BYE || ball.type == BallType.LEG_BYE -> {
-            badgeBgColor = MaterialTheme.colorScheme.surface
-            badgeTextColor = MaterialTheme.colorScheme.onSurface
-            badgeBorderColor = MaterialTheme.colorScheme.outlineVariant
-            displayText = "${ball.extraRuns}"
+        ball.type == BallType.BYE -> {
+            badgeBgColor = Color(0xFF7C3AED)
+            badgeTextColor = Color.White
+            badgeBorderColor = Color.Transparent
+            displayText = if (ball.extraRuns > 1) "${ball.extraRuns}B" else "B"
+        }
+        ball.type == BallType.LEG_BYE -> {
+            badgeBgColor = Color(0xFF6D28D9)
+            badgeTextColor = Color.White
+            badgeBorderColor = Color.Transparent
+            displayText = if (ball.extraRuns > 1) "${ball.extraRuns}LB" else "LB"
         }
         else -> {
-            badgeBgColor = MaterialTheme.colorScheme.surface
-            badgeTextColor = MaterialTheme.colorScheme.onSurface
-            badgeBorderColor = MaterialTheme.colorScheme.outlineVariant
+            badgeBgColor = if (runs == 0) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.primaryContainer
+            badgeTextColor = if (runs == 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onPrimaryContainer
+            badgeBorderColor = if (runs == 0) MaterialTheme.colorScheme.outlineVariant else Color.Transparent
             displayText = "$runs"
         }
     }

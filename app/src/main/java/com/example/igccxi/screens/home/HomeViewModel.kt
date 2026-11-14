@@ -7,20 +7,35 @@ import com.example.igccxi.data.repository.RepositoryProvider
 import com.example.igccxi.domain.model.MatchStatus
 import com.example.igccxi.domain.usecase.GetCurrentUserIdUseCase
 import com.example.igccxi.domain.usecase.GetMatchesUseCase
+import com.example.igccxi.domain.usecase.ObserveActiveUsersUseCase
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-import com.example.igccxi.domain.usecase.ObserveActiveUsersUseCase
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-
 /**
- * ViewModel for the Home screen, cleanly consuming domain UseCases.
+ * ====================================================================================
+ * PRESENTATION LAYER: HOME VIEWMODEL (Reactive Modern Android Architecture)
+ * ====================================================================================
+ *
+ * [HomeViewModel] coordinates the home dashboard:
+ * - Live active matches and completed match results.
+ * - Anonymous user authentication and identification.
+ * - Live online active user counter.
+ *
+ * JUNIOR DEVELOPER NOTE ON FLOW COMBINE:
+ * - We combine 4 asynchronous streams: matches, user ID, active users count, and errors.
+ * - Whenever ANY of these values changes, [combine] produces a new [HomeUiState] cleanly.
+ * - [.flowOn(Dispatchers.Default)]: Partitions matches into live vs completed off the main thread.
+ * - [.stateIn(SharingStarted.WhileSubscribed(5000))]: Stops active listening when the screen
+ *   is in background, preserving battery and Firestore bandwidth.
  */
 class HomeViewModel @JvmOverloads constructor(
     application: Application,
@@ -33,6 +48,7 @@ class HomeViewModel @JvmOverloads constructor(
     private val _error = MutableStateFlow<String?>(null)
 
     init {
+        // Initialize anonymous user identity and record initial presence
         viewModelScope.launch {
             try {
                 val uid = getCurrentUserIdUseCase()
@@ -81,9 +97,11 @@ class HomeViewModel @JvmOverloads constructor(
             isLoading = false,
             errorMessage = err
         )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = HomeUiState(isLoading = true)
-    )
+    }
+        .flowOn(Dispatchers.Default) // Offload match partitioning to background thread pool
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = HomeUiState(isLoading = true)
+        )
 }

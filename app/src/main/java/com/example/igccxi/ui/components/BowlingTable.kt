@@ -122,7 +122,7 @@ fun BowlingTable(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (isCurrentBowler) "${bowler.name} â€¢" else bowler.name,
+                            text = if (isCurrentBowler) "${bowler.name} •" else bowler.name,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = if (isCurrentBowler) FontWeight.SemiBold else FontWeight.Normal,
                             maxLines = 1,

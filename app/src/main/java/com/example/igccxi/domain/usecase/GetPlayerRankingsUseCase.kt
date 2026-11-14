@@ -5,20 +5,40 @@ import com.example.igccxi.domain.model.PlayerBattingRanking
 import com.example.igccxi.domain.model.PlayerBowlingRanking
 import com.example.igccxi.domain.model.RankingsData
 import com.example.igccxi.domain.repository.MatchRepository
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import java.util.Locale
 
 /**
- * Clean Architecture Use Case:
- * Aggregates all completed and live scorecards to calculate official leaderboards for batsmen and bowlers.
- * Enforces strict single-entry deduplication by player name so no player appears twice.
+ * ====================================================================================
+ * CLEAN ARCHITECTURE: USE CASE LAYER (Domain Business Logic)
+ * ====================================================================================
+ *
+ * [GetPlayerRankingsUseCase] is responsible for:
+ * 1. Listening reactively to the stream of all matches from [MatchRepository].
+ * 2. Aggregating all innings, batters, and bowlers into official leaderboards.
+ * 3. Enforcing single-entry deduplication by player name (case-insensitive).
+ * 4. Offloading heavy numerical calculations to [Dispatchers.Default] so the Android
+ *    UI thread remains completely free for 60/120fps buttery smooth rendering.
+ *
+ * JUNIOR DEVELOPER NOTE ON COROUTINES & FLOW:
+ * - A Kotlin [Flow] is a cold asynchronous data stream that emits multiple values sequentially.
+ * - `.map { ... }` transforms each incoming match list into an aggregated [RankingsData].
+ * - `.flowOn(Dispatchers.Default)` guarantees that the CPU-intensive aggregation loop
+ *   executes on a background worker thread rather than on the Main (UI) thread.
+ *
+ * @param repository The data repository supplying the reactive match stream.
+ * @param defaultDispatcher The coroutine dispatcher for CPU-bound computations (defaults to [Dispatchers.Default]).
  */
 class GetPlayerRankingsUseCase(
-    private val repository: MatchRepository
+    private val repository: MatchRepository,
+    private val defaultDispatcher: CoroutineDispatcher = Dispatchers.Default
 ) {
     companion object {
-        // Known test matches from early app testing
+        // Known test matches from early app testing that are excluded from public stats
         private val TEST_MATCH_IDS = setOf(
             "F2A7oeEcJkZ6ZS2z4aoF", // 123 vs 456
             "BqSQumBqWYACyUNqUejC",
@@ -31,6 +51,10 @@ class GetPlayerRankingsUseCase(
         )
     }
 
+    /**
+     * Determines whether a given player in a match is eligible to be counted in rankings.
+     * Prevents early test match artifacts while preserving valid players like Kashish.
+     */
     private fun isEligiblePlayer(name: String, match: Match): Boolean {
         val clean = name.trim().lowercase(Locale.ROOT)
         if (clean.isEmpty()) return false
@@ -48,12 +72,23 @@ class GetPlayerRankingsUseCase(
         return true
     }
 
+    /**
+     * Executes the Use Case reactively.
+     * Whenever matches update in Firestore or local storage, this Flow emits
+     * freshly computed and sorted [RankingsData].
+     */
     operator fun invoke(): Flow<RankingsData> {
-        return repository.observeMatches().map { matches ->
-            calculateRankings(matches)
-        }
+        return repository.observeMatches()
+            .map { matches ->
+                calculateRankings(matches)
+            }
+            .flowOn(defaultDispatcher) // Keep CPU-heavy loops off the Main/UI thread
     }
 
+    /**
+     * Pure business logic method that transforms raw [Match] scorecards into sorted leaderboards.
+     * Being a pure function makes it 100% testable without mocking Android frameworks!
+     */
     fun calculateRankings(matches: List<Match>): RankingsData {
         val battingMap = mutableMapOf<String, MutableBattingStats>()
         val bowlingMap = mutableMapOf<String, MutableBowlingStats>()
@@ -140,7 +175,13 @@ class GetPlayerRankingsUseCase(
             }
         }
 
-        // Sort Batsmen: 1. Runs (desc), 2. Highest Score (desc), 3. Strike Rate (desc)
+        // ============================================================================
+        // STEP 4: SORTING & GENERATING OFFICIAL RANKING POSITIONS
+        // ============================================================================
+        // Sort Batsmen by:
+        //   1. Total Runs (descending)
+        //   2. Highest Score (descending)
+        //   3. Strike Rate (descending)
         val sortedBatsmen = battingMap.values
             .filter { it.inningsCount > 0 || it.totalRuns > 0 }
             .sortedWith(
@@ -165,7 +206,10 @@ class GetPlayerRankingsUseCase(
                 )
             }
 
-        // Sort Bowlers: 1. Wickets (desc), 2. Economy (asc), 3. Runs Conceded (asc)
+        // Sort Bowlers by:
+        //   1. Wickets (descending)
+        //   2. Economy Rate (ascending - lower is better)
+        //   3. Runs Conceded (ascending - fewer runs conceded breaks ties)
         val sortedBowlers = bowlingMap.values
             .filter { it.totalBalls > 0 || it.wickets > 0 }
             .sortedWith(

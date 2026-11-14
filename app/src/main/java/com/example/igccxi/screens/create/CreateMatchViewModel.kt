@@ -15,6 +15,17 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * ====================================================================================
+ * PRESENTATION LAYER: CREATE MATCH VIEWMODEL
+ * ====================================================================================
+ *
+ * [CreateMatchViewModel] validates and builds a new cricket match setup:
+ * - Team selection, toss decision, custom/preset overs.
+ * - Players per team and optional Common Player slot ("CMN").
+ * - Starting striker, non-striker, and opening bowler assignment.
+ * - Automatic background player profile registration into local storage.
+ */
 class CreateMatchViewModel @JvmOverloads constructor(
     application: Application,
     private val createMatchUseCase: CreateMatchUseCase = RepositoryProvider.provideCreateMatchUseCase(application),

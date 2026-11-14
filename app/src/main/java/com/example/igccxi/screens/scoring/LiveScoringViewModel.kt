@@ -12,12 +12,21 @@ import com.example.igccxi.domain.model.MatchStatus
 import com.example.igccxi.domain.usecase.GetCurrentUserIdUseCase
 import com.example.igccxi.domain.usecase.GetMatchByIdUseCase
 import com.example.igccxi.domain.usecase.UpdateMatchUseCase
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * ====================================================================================
+ * PRESENTATION LAYER: LIVE SCORING VIEWMODEL
+ * ====================================================================================
+ *
+ * [LiveScoringViewModel] drives the real-time scoring engine screen.
+ * It manages ball-by-ball updates, undo stack, extras, wicket popups, and bowler rotation.
+ */
 class LiveScoringViewModel @JvmOverloads constructor(
     application: Application,
     private val getMatchByIdUseCase: GetMatchByIdUseCase = RepositoryProvider.provideGetMatchByIdUseCase(application),
@@ -31,6 +40,7 @@ class LiveScoringViewModel @JvmOverloads constructor(
 
     private val historyStack = mutableListOf<Match>()
     private var currentMatchId: String = ""
+    private var observeMatchJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -42,7 +52,8 @@ class LiveScoringViewModel @JvmOverloads constructor(
 
     fun loadMatch(matchId: String) {
         currentMatchId = matchId
-        viewModelScope.launch {
+        observeMatchJob?.cancel() // Cancel prior match observation to prevent leak
+        observeMatchJob = viewModelScope.launch {
             try {
                 val currentUserId = getCurrentUserIdUseCase()
                 getMatchByIdUseCase(matchId).collect { match ->
