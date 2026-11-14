@@ -1,8 +1,10 @@
 package com.example.igccxi.screens.create
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.igccxi.data.repository.LocalPlayerProfileRepository
 import com.example.igccxi.data.repository.RepositoryProvider
 import com.example.igccxi.domain.ScoringEngine
 import com.example.igccxi.domain.model.Match
@@ -15,11 +17,20 @@ import kotlinx.coroutines.launch
 
 class CreateMatchViewModel @JvmOverloads constructor(
     application: Application,
-    private val createMatchUseCase: CreateMatchUseCase = RepositoryProvider.provideCreateMatchUseCase(application)
+    private val createMatchUseCase: CreateMatchUseCase = RepositoryProvider.provideCreateMatchUseCase(application),
+    private val playerProfileRepository: LocalPlayerProfileRepository = RepositoryProvider.getPlayerProfileRepository(application)
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(CreateMatchUiState())
     val uiState: StateFlow<CreateMatchUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            playerProfileRepository.observeProfiles().collect { profiles ->
+                _uiState.update { it.copy(allProfiles = profiles) }
+            }
+        }
+    }
 
     fun onTeamAChange(name: String) = _uiState.update { it.copy(teamA = name) }
     fun onTeamBChange(name: String) = _uiState.update { it.copy(teamB = name) }
@@ -158,6 +169,63 @@ class CreateMatchViewModel @JvmOverloads constructor(
     fun onNonStrikerNameChange(name: String) = _uiState.update { it.copy(nonStrikerName = name) }
     fun onBowlerNameChange(name: String) = _uiState.update { it.copy(bowlerName = name) }
 
+    // --- Player Profile Actions ---
+    fun onRequestAddProfile(playerName: String) {
+        val clean = playerName.trim()
+        if (clean.isNotEmpty()) {
+            viewModelScope.launch {
+                playerProfileRepository.registerPlayerName(clean)
+                _uiState.update { it.copy(editingProfileForPlayer = clean) }
+            }
+        }
+    }
+
+    fun dismissAddProfileDialog() {
+        _uiState.update { it.copy(editingProfileForPlayer = null) }
+    }
+
+    fun onPhotoSelected(playerName: String, uri: Uri) {
+        val clean = playerName.trim()
+        if (clean.isEmpty()) return
+        viewModelScope.launch {
+            val savedPath = playerProfileRepository.saveImageFromUri(clean, uri)
+            if (savedPath != null) {
+                playerProfileRepository.updateProfilePhoto(clean, savedPath, null)
+            }
+            dismissAddProfileDialog()
+        }
+    }
+
+    fun onAvatarPresetSelected(playerName: String, icon: String) {
+        val clean = playerName.trim()
+        if (clean.isEmpty()) return
+        viewModelScope.launch {
+            playerProfileRepository.updateProfilePhoto(clean, null, icon)
+            dismissAddProfileDialog()
+        }
+    }
+
+    fun onRemovePhoto(playerName: String) {
+        val clean = playerName.trim()
+        if (clean.isEmpty()) return
+        viewModelScope.launch {
+            playerProfileRepository.updateProfilePhoto(clean, null, null)
+            dismissAddProfileDialog()
+        }
+    }
+
+    fun setShowDirectoryDialog(show: Boolean) {
+        _uiState.update { it.copy(showDirectoryDialog = show) }
+    }
+
+    fun onAddNewPlayerToDirectory(name: String) {
+        val clean = name.trim()
+        if (clean.isEmpty()) return
+        viewModelScope.launch {
+            playerProfileRepository.registerPlayerName(clean)
+        }
+    }
+
     fun createMatch(onMatchCreated: (String) -> Unit) {
         val state = _uiState.value
         val teamA = state.teamA.trim()
@@ -219,6 +287,14 @@ class CreateMatchViewModel @JvmOverloads constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
             try {
+                // Automatically persist every player into the app's player profiles
+                playerProfileRepository.registerPlayerName(striker)
+                playerProfileRepository.registerPlayerName(nonStriker)
+                playerProfileRepository.registerPlayerName(bowler)
+                if (commonPlayer.isNotEmpty()) {
+                    playerProfileRepository.registerPlayerName(commonPlayer)
+                }
+
                 val actualTossWinner = if (state.isTeamAWonToss) teamA else teamB
                 val initialMatch = Match(
                     teamA = teamA,
