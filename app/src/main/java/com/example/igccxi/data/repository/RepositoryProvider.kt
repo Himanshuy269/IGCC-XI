@@ -122,4 +122,18 @@ object RepositoryProvider {
 
     fun provideObserveActiveUsersUseCase(context: Context): com.example.igccxi.domain.usecase.ObserveActiveUsersUseCase =
         com.example.igccxi.domain.usecase.ObserveActiveUsersUseCase(getPresenceRepository(context))
+
+    @Volatile
+    private var playerProfileRepositoryInstance: LocalPlayerProfileRepository? = null
+
+    fun getPlayerProfileRepository(context: Context): LocalPlayerProfileRepository {
+        return playerProfileRepositoryInstance ?: synchronized(this) {
+            playerProfileRepositoryInstance ?: LocalPlayerProfileRepository(
+                context = context.applicationContext,
+                matchRepository = getRepository(context)
+            ).also {
+                playerProfileRepositoryInstance = it
+            }
+        }
+    }
 }
